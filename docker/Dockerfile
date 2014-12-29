@@ -47,6 +47,7 @@ RUN autoreconf -if
 RUN ./configure
 RUN make
 RUN make install
+RUN ldconfig
 WORKDIR /tmp/
 
 # Install IPFIXcol
@@ -68,13 +69,21 @@ RUN make
 RUN make install
 WORKDIR /tmp/
 
+# Install httpfieldmerge (intermediate) plugin for IPFIXcol
+WORKDIR ipfixcol/plugins/intermediate/httpfieldmerge/
+RUN autoreconf -if
+RUN ./configure
+RUN make
+RUN make install
+WORKDIR /tmp/
+
 # Install proxy (intermediate) plugin for IPFIXcol
 # RUN apt-get update && apt-get install -y libc-ares-dev
 # WORKDIR ipfixcol/plugins/intermediate/proxy/
 # RUN autoreconf -if
 # RUN ./configure
 # RUN make
-# RUN make install-data-hook
+# RUN make install
 # WORKDIR /tmp/
 
 # Install FastBit (storage) plugin for IPFIXcol
