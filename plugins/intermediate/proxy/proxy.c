@@ -122,6 +122,9 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
         case 39499:     fields = (struct ipfix_entity *) invea_fields;
                         break;
 
+        case 44913:     fields = (struct ipfix_entity *) rs_fields;
+                        break;
+
         default:        MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
                         break;
     }
@@ -320,7 +323,6 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             if (template_record_get_field(record, invea_fields[i].pen, ((struct ipfix_entity) invea_fields[i]).element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = invea_fields[i].pen;
-                return;
             }
         }
 
@@ -329,7 +331,14 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             if (template_record_get_field(record, ntop_fields[i].pen, ((struct ipfix_entity) ntop_fields[i]).element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
-                return;
+            }
+        }
+
+        // Check enterprise-specific IEs from RS
+        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+            if (template_record_get_field(record, rs_fields[i].pen, ((struct ipfix_entity) rs_fields[i]).element_id, NULL) != NULL) {
+                MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", template_id);
+                templ_stats->http_fields_pen = rs_fields[i].pen;
             }
         }
     }
