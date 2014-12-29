@@ -107,7 +107,7 @@ static int is_source_field (uint16_t id) {
 }
 
 /**
- * \brief Retrieves a references to a set of enterprise-specific fields,
+ * \brief Retrieves a reference to a set of enterprise-specific fields,
  * based on a supplied PEN.
  *
  * \param[in] pen IANA Private Enterprise Number

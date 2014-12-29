@@ -66,9 +66,15 @@
 // Identifier for MSG_* macros
 static char *msg_module = "httpfieldmerge";
 
-// Returns the enterprise-specific IEs for a specified PEN.
+/**
+ * \brief Retrieves a reference to a set of enterprise-specific fields,
+ * based on a supplied PEN.
+ *
+ * \param[in] pen IANA Private Enterprise Number
+ * \return Field reference if supplied PEN is known, NULL otherwise
+ */
 static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
-    struct ipfix_entity *fields;
+    struct ipfix_entity *fields = NULL;
     switch (pen) {
         case 35632:     fields = (struct ipfix_entity *) ntop_fields;
                         break;
@@ -77,14 +83,20 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
                         break;
 
         default:        MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
+                        break;
     }
 
     return fields;
 }
 
-// Returns the HTTP-related field mappings for a specified PEN.
+/**
+ * \brief Retrieves a reference to field mappings, based on a supplied PEN.
+ *
+ * \param[in] pen IANA Private Enterprise Number
+ * \return Field mappings reference if supplied PEN is known, NULL otherwise
+ */
 static struct field_mapping* pen_to_field_mappings (uint16_t pen) {
-    struct field_mapping *mapping;
+    struct field_mapping *mapping = NULL;
     switch (pen) {
         case 35632:     mapping = (struct field_mapping *) ntop_field_mappings;
                         break;
@@ -98,9 +110,16 @@ static struct field_mapping* pen_to_field_mappings (uint16_t pen) {
     return mapping;
 }
 
-/*
- * Retrieves the target field for a specified mapping, based on a mapping's
- * source field.
+/**
+ * \brief Retrieves an IPFIX Information Element based on a supplied field
+ * mapping and the mapping's source field. As such, the target of a mapping
+ * is retrieved.
+ *
+ * \param[in] mapping Field mapping
+ * \param[in] source_field Source field of the mapping, for which the target
+ *      field must be retrieved
+ * \return Field reference if the supplied source field is known within the
+ *      supplied mapping, NULL otherwise
  */
 static struct ipfix_entity* field_to_mapping_target (struct field_mapping* mapping, struct ipfix_entity* source_field) {
     unsigned int i;
@@ -113,9 +132,13 @@ static struct ipfix_entity* field_to_mapping_target (struct field_mapping* mappi
     return NULL;
 }
 
-/*
- * Determines whether template contains HTTP-related fields.
- */ 
+ /**
+ * \brief Determines whether template contains HTTP-related fields.
+ *
+ * \param[in] rec Pointer to template record
+ * \param[in] rec_len Template record length
+ * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
+ */
 void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
@@ -156,7 +179,13 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     }
 }
 
-// For processing template records and option template records
+/**
+ * \brief Processing of template records and option template records
+ *
+ * \param[in] rec Pointer to template record
+ * \param[in] rec_len Template record length
+ * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
+ */
 void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
@@ -261,7 +290,13 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     free(new_rec);
 }
 
-// For processing data records
+/**
+ * \brief Processing of data records
+ *
+ * \param[in] rec Pointer to data record
+ * \param[in] rec_len Data record length
+ * \param[in] data Any-type data structure (here: proxy_processor)
+ */
 void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data) {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
 
