@@ -16,8 +16,8 @@
 # After building the container, which can easily take 15-30 minutes, the container
 # can be run as follows:
 #
-#   docker run -d -p 3055:3055/udp -p 3056:3056/tcp -p 3057:3057/udp -v /var/db/rs-app/fastbit/:/var/db/rs-app/fastbit/ ipfixcol
-#       (Note that since SCTP support is currently missing in Docker, we use port 3057/udp here as a placeholder.
+#   docker run -d -p 3055:3055/udp -p 3056:3056/tcp -v /var/db/rs-app/fastbit/:/var/db/rs-app/fastbit/ ipfixcol
+#       (Once SCTP passthrough is supported by Docker, we add '-p 3057:3057/sctp' in the command above.
 #           Feature request: https://github.com/docker/docker/issues/9689)
 #
 # Container output (e.g., stdout and stderr) can be obtained as follows:
@@ -116,4 +116,4 @@ CMD ["ipfixcol", "-c", "/etc/ipfixcol/rs_startup.xml", "-e", "/etc/ipfixcol/rs_i
 # Bind ports to host system
 EXPOSE 3055
 EXPOSE 3056
-EXPOSE 3057
+# EXPOSE 3057
