@@ -68,14 +68,14 @@
 #define TARGET_FIELD_PEN 44913
 
 // IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)
-#define rsHttpHost      { 44913,   1, 20,  "rsHttpHost" }
-#define rsHttpUrl       { 44913,   2, 21,  "rsHttpUrl" }
-
 #define inveaHttpHost   { 39499,   1, 32,  "inveaHttpHost" }
 #define inveaHttpUrl    { 39499,   2, 64,  "inveaHttpUrl" }
 
 #define ntopHttpHost    { 35632, 187, 32,  "ntopHttpHost" }
 #define ntopHttpUrl     { 35632, 180, 64,  "ntopHttpUrl" }
+
+#define rsHttpHost      { 44913,   1, 20,  "rsHttpHost" }
+#define rsHttpUrl       { 44913,   2, 21,  "rsHttpUrl" }
 
 struct ipfix_entity {
     uint16_t pen;
@@ -89,6 +89,9 @@ static struct ipfix_entity invea_fields[] = {
 };
 static struct ipfix_entity ntop_fields[] = {
     ntopHttpHost, ntopHttpUrl
+};
+static struct ipfix_entity rs_fields[] = {
+    rsHttpHost, rsHttpUrl
 };
 #define vendor_fields_count         2
 
