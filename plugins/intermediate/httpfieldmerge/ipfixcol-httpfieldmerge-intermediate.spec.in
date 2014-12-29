@@ -1,10 +1,11 @@
-Summary: Intermediate plugin for merging HTTP-related fields in flow records.
+Summary: IPFIXcol intermediate plugin for merging HTTP-related fields in flow records.
 Name: @PACKAGE_NAME@
 Version: @PACKAGE_VERSION@
 Release: @RELEASE@
-URL: http://www.rickhofstede.nl
-Source: <URL>
-License: <License>
+URL: http://www.secdorks.net
+Source: https://github.com/Secdorks/ipfixcol/tree/master/plugins/intermediate/httpfieldmerge
+License: BSD
+Vendor: Secdorks.net
 Packager: @USERNAME@ <@USERMAIL@>
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
@@ -12,7 +13,7 @@ BuildRequires: gcc make doxygen pkgconfig
 Requires: ipfixcol >= 0.7.1
 
 %description
-Intermediate plugin for merging HTTP-related fields in flow records.
+IPFIXcol intermediate plugin for merging HTTP-related fields in flow records.
 
 %prep
 %setup

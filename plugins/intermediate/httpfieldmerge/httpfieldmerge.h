@@ -19,7 +19,7 @@
  *
  * The unified set of fields uses PEN '44913'.
  *
- * Author:  Rick Hofstede <mail&rickhofstede.nl>
+ * Author:  Kirc <kirc&secdorks.net>
  *
  */
 

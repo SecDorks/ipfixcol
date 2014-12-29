@@ -24,11 +24,11 @@
 #
 #   docker logs <container_id>
 #
-# Author:   Rick Hofstede <mail&rickhofstede.nl>
+# Author:   Kirc <kirc&secdorks.net>
 #
 
 FROM ubuntu:14.04
-MAINTAINER Rick Hofstede <mail&rickhofstede.nl>
+MAINTAINER Kirc <kirc&secdorks.net>
 
 WORKDIR /tmp/
 
@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y \
     libtool
 
 # Install libfastbit
-RUN git clone https://github.com/CESNET/libfastbit.git
+RUN git clone https://github.com/Secdorks/libfastbit.git
 WORKDIR libfastbit/
 RUN pwd
 RUN autoreconf -if
@@ -60,7 +60,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     pkg-config \
     xsltproc
-RUN git clone https://github.com/rickhofstede/ipfixcol.git
+RUN git clone https://github.com/Secdorks/ipfixcol.git
 WORKDIR ipfixcol/base/
 RUN autoreconf -if
 RUN ./configure

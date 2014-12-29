@@ -24,7 +24,7 @@
  * are added only once (together with the IPv4 IEs), to avoid template/data records that
  * feature multiple instances of the same IE.
  *
- * Author:  Rick Hofstede <mail&rickhofstede.nl>
+ * Author:  Kirc <kirc&secdorks.net>
  *
  */
 
