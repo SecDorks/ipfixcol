@@ -71,7 +71,12 @@
 // Identifier for MSG_* macros
 static char *msg_module = "proxy";
 
-// Checks whether a specified element (ID) represents a port number.
+/**
+ * \brief Checks whether a specified element (ID) represents a port number.
+ *
+ * \param[in] id IPFIX Information Element ID
+ * \return 1 on success, 0 otherwise
+ */
 static int is_port_number_field (uint16_t id) {
     unsigned int i;
     for (i = 0; i < port_number_fields_count; ++i) {
@@ -83,9 +88,12 @@ static int is_port_number_field (uint16_t id) {
     return 0;
 }
 
-/*
- * Checks whether a specified element (ID) belongs to a 'source field' (e.g.,
+/**
+ * \brief Checks whether a specified element (ID) belongs to a 'source field' (e.g.,
  * sourceIPv4Address, origSourceTransportPort).
+ *
+ * \param[in] id IPFIX Information Element ID
+ * \return 1 on success, 0 otherwise
  */
 static int is_source_field (uint16_t id) {
     unsigned int i;
@@ -98,9 +106,15 @@ static int is_source_field (uint16_t id) {
     return 0;
 }
 
-// Returns the enterprise-specific IEs for a specified PEN.
+/**
+ * \brief Retrieves a references to a set of enterprise-specific fields,
+ * based on a supplied PEN.
+ *
+ * \param[in] pen IANA Private Enterprise Number
+ * \return Field reference if supplied PEN is known, NULL otherwise
+ */
 static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
-    struct ipfix_entity *fields;
+    struct ipfix_entity *fields = NULL;
     switch (pen) {
         case 35632:     fields = (struct ipfix_entity *) ntop_fields;
                         break;
@@ -109,13 +123,21 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
                         break;
 
         default:        MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
+                        break;
     }
 
     return fields;
 }
 
-// This callback function is called once a domain name resolution has completed
-static void ares_cb (void *arg, int status, int timeouts, struct hostent *host) {
+/**
+ * \brief c-ares callback function, called once a domain name resolution has completed.
+ *
+ * \param[in] arg Any-type argument supplied to ares_gethostbyname (here: proxy_ares_processor)
+ * \param[in] status Status code of the resolver
+ * \param[in] timeouts Indicates how many times a query timed out during the execution of the given request
+ * \param[in] hostent Pointer to a 'struct hostent', containing the name of the host returned by the query, or NULL on error
+ */
+static void ares_cb (void *arg, int status, int timeouts, struct hostent *hostent) {
     struct proxy_ares_processor *ares_proc = (struct proxy_ares_processor *) arg;
     char *ip_addr;
     uint8_t offset;
@@ -132,7 +154,7 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *host) 
         return;
     }
 
-    if (host == NULL || status != ARES_SUCCESS) {
+    if (hostent == NULL || status != ARES_SUCCESS) {
         MSG_WARNING(msg_module, "Failed domain name resolution for '%s': %s", ares_proc->http_hostname, ares_strerror(status));
 
         // Copy original data record
@@ -171,7 +193,7 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *host) 
     }
 
     // Only select first IP address (in network byte order)
-    ip_addr = host->h_addr_list[0];
+    ip_addr = hostent->h_addr_list[0];
 
     // Convert port number to network byte order
     ares_proc->port_number = htons(ares_proc->port_number);
@@ -238,7 +260,11 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *host) 
     free(ares_proc);
 }
 
-// Waits for all domain name resolutions to be ready
+/**
+ * \brief Waits for all domain name resolutions to be ready
+ *
+ * \param[in] channel c-ares name service channel
+ */
 static void ares_wait (ares_channel channel) {
     for (;;) {
         struct timeval *tvp, tv;
@@ -259,10 +285,14 @@ static void ares_wait (ares_channel channel) {
     }
 }
 
-/*
- * Determines whether template contains IPv4 and/or IPv6 fields. In addition,
- * it is determined whether enterprise-specific IEs are used.
- */ 
+/**
+ * \brief Determines whether template contains IPv4 and/or IPv6 fields. In addition,
+ * it is determined whether and which enterprise-specific IEs are used.
+ *
+ * \param[in] rec Pointer to template record
+ * \param[in] rec_len Template record length
+ * \param[in] data Any-type data structure (here: proxy_processor)
+ */
 void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
@@ -305,7 +335,13 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     }
 }
 
-// For processing template records and option template records
+/**
+ * \brief Processing of template records and option template records
+ *
+ * \param[in] rec Pointer to template record
+ * \param[in] rec_len Template record length
+ * \param[in] data Any-type data structure (here: proxy_processor)
+ */
 void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
@@ -454,7 +490,13 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     free(new_rec);
 }
 
-// For processing data records
+/**
+ * \brief Processing of data records
+ *
+ * \param[in] rec Pointer to data record
+ * \param[in] rec_len Data record length
+ * \param[in] data Any-type data structure (here: proxy_processor)
+ */
 void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
     uint16_t *msg_data;
