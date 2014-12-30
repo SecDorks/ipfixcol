@@ -299,6 +299,7 @@ static void ares_wait (ares_channel channel) {
 void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
+    int i;
 
     // Determine IP versions used within this template
     struct templ_stats_elem_t *templ_stats;
@@ -308,6 +309,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats = malloc(sizeof(struct templ_stats_elem_t));
         templ_stats->id = template_id;
         templ_stats->http_fields_pen = 0;
+        templ_stats->http_fields_pen_determined = 0;
         templ_stats->ipv4 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_entity) sourceIPv4Address).element_id, NULL) != NULL);
         templ_stats->ipv6 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_entity) sourceIPv6Address).element_id, NULL) != NULL);
 
@@ -316,11 +318,10 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     }
 
     // Determine exporter PEN based on presence of certain enterprise-specific IEs
-    if (templ_stats->http_fields_pen == 0) { // Do only if it was not done (successfully) before
-        int i;
+    if (templ_stats->http_fields_pen_determined == 0) { // Do only if it was not done (successfully) before
         // Check enterprise-specific IEs from INVEA-TECH
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, invea_fields[i].pen, ((struct ipfix_entity) invea_fields[i]).element_id, NULL) != NULL) {
+            if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = invea_fields[i].pen;
             }
@@ -328,7 +329,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
 
         // Check enterprise-specific IEs from ntop
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, ntop_fields[i].pen, ((struct ipfix_entity) ntop_fields[i]).element_id, NULL) != NULL) {
+            if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
             }
@@ -336,11 +337,13 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
 
         // Check enterprise-specific IEs from RS
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, rs_fields[i].pen, ((struct ipfix_entity) rs_fields[i]).element_id, NULL) != NULL) {
+            if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = rs_fields[i].pen;
             }
         }
+
+        templ_stats->http_fields_pen_determined = 1;
     }
 }
 
@@ -487,12 +490,14 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id_new, templ_stats_new);
     if (templ_stats_new) {
         templ_stats_new->http_fields_pen = templ_stats->http_fields_pen;
+        templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
         templ_stats_new->ipv4 = templ_stats->ipv4;
         templ_stats_new->ipv6 = templ_stats->ipv6;
     } else {
         templ_stats_new = malloc(sizeof(struct templ_stats_elem_t));
         templ_stats_new->id = template_id_new;
         templ_stats_new->http_fields_pen = templ_stats->http_fields_pen;
+        templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
         templ_stats_new->ipv4 = templ_stats->ipv4;
         templ_stats_new->ipv6 = templ_stats->ipv6;
         HASH_ADD_INT(proc->plugin_conf->templ_stats, id, templ_stats_new);

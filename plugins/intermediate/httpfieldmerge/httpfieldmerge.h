@@ -110,9 +110,10 @@ static struct field_mapping ntop_field_mappings[] = {
 };
 
 struct templ_stats_elem_t {
-    int id;                 // Hash key
-    int http_fields_pen;    // Exporter PEN in case template contains HTTP-related fields
-    UT_hash_handle hh;      // Hash handle for internal hash functioning
+    int id;                         // Hash key
+    uint32_t http_fields_pen;       // Exporter PEN in case template contains HTTP-related fields
+    int http_fields_pen_determined; // Indicates whether the PEN belonging HTTP-related has been determined before
+    UT_hash_handle hh;              // Hash handle for internal hash functioning
 };
 
 // Stores plugin's internal configuration

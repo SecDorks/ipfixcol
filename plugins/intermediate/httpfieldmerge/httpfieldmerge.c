@@ -146,6 +146,7 @@ static struct ipfix_entity* field_to_mapping_target (struct field_mapping* mappi
 void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
+    int i;
 
     // Determine IP versions used within this template
     struct templ_stats_elem_t *templ_stats;
@@ -155,17 +156,17 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats = malloc(sizeof(struct templ_stats_elem_t));
         templ_stats->id = template_id;
         templ_stats->http_fields_pen = 0;
+        templ_stats->http_fields_pen_determined = 0;
 
         // Store result in hashmap
         HASH_ADD_INT(proc->plugin_conf->templ_stats, id, templ_stats);
     }
 
     // Determine exporter PEN based on presence of certain enterprise-specific IEs
-    if (templ_stats->http_fields_pen == 0) { // Do only if it was not done (successfully) before
-        int i;
+    if (templ_stats->http_fields_pen_determined == 0) { // Do only if it was not done (successfully) before
         // Check enterprise-specific IEs from INVEA-TECH
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, invea_fields[i].pen, ((struct ipfix_entity) invea_fields[i]).element_id, NULL) != NULL) {
+            if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = invea_fields[i].pen;
             }
@@ -173,7 +174,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
 
         // Check enterprise-specific IEs from ntop
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, ntop_fields[i].pen, ((struct ipfix_entity) ntop_fields[i]).element_id, NULL) != NULL) {
+            if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
             }
@@ -181,11 +182,13 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
 
         // Check enterprise-specific IEs from RS
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, rs_fields[i].pen, ((struct ipfix_entity) rs_fields[i]).element_id, NULL) != NULL) {
+            if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = rs_fields[i].pen;
             }
         }
+
+        templ_stats->http_fields_pen_determined = 1;
     }
 }
 
@@ -207,7 +210,6 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct templ_stats_elem_t *templ_stats;
     int template_id = (int) ntohs(old_rec->template_id);
     HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id, templ_stats);
-
     if (!templ_stats) {
         MSG_ERROR(msg_module, "Could not find entry '%u' in hashmap; using original template", template_id);
 
@@ -220,7 +222,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
 
     /*
      * Skip further processing if template does not include HTTP IEs (hostname, URL),
-     * or template already uses the unified HTTP IEs.
+     * or if template already uses the unified set of HTTP IEs.
      */
     if (templ_stats->http_fields_pen == 0 || templ_stats->http_fields_pen == TARGET_FIELD_PEN) {
         // Copy existing record to new message
@@ -268,6 +270,8 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
 
                 // Reset for next iteration
                 field_modified = 0;
+
+                // Skip looping over full set of fields, since every IE can exist only once
                 break;
             }
 
@@ -298,6 +302,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats_new = malloc(sizeof(struct templ_stats_elem_t));
         templ_stats_new->id = template_id_new;
         templ_stats_new->http_fields_pen = TARGET_FIELD_PEN;
+        templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
     }
 
     free(new_rec);
