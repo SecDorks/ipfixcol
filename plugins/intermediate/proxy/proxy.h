@@ -71,6 +71,7 @@
 
 #include "uthash.h"
 
+#define HTTP_FIELD_WORKING_SIZE 64
 #define TEMPL_MAX_LEN 100000
 
 // IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)
@@ -154,15 +155,16 @@ static struct field_mapping IPv6_field_mappings[] = {
 
 // Detection of these ports will trigger domain name resolution
 static int proxy_ports[] = {
-    3128, 8080
+    80, 443, 3128, 8080
 };
 
 struct templ_stats_elem_t {
-    int id;                 // Hash key
-    int http_fields_pen;    // Exporter PEN in case template contains HTTP-related fields
-    int ipv4;               // Indicates whether template contains IPv4 address fields
-    int ipv6;               // Indicates whether template contains IPv6 address fields
-    UT_hash_handle hh;      // Hash handle for internal hash functioning
+    int id;                         // Hash key
+    uint32_t http_fields_pen;       // Exporter PEN in case template contains HTTP-related fields
+    int http_fields_pen_determined; // Indicates whether the PEN belonging HTTP-related has been determined before
+    int ipv4;                       // Indicates whether template contains IPv4 address fields
+    int ipv6;                       // Indicates whether template contains IPv6 address fields
+    UT_hash_handle hh;              // Hash handle for internal hash functioning
 };
 
 // Stores plugin's internal configuration

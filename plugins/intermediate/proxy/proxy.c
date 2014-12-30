@@ -603,7 +603,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     struct ipfix_entity *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
 
     // Retrieve HTTP hostname
-    char http_hostname[64];
+    char http_hostname[HTTP_FIELD_WORKING_SIZE];
     ret = template_contains_field(templ, http_fields[0].element_id | 0x8000);
     message_get_data((uint8_t **) &msg_data, rec + ret, http_fields[0].length);
     memcpy(http_hostname, msg_data, http_fields[0].length);
@@ -611,7 +611,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     free(msg_data);
 
     // Retrieve HTTP URL
-    char http_url[64];
+    char http_url[HTTP_FIELD_WORKING_SIZE];
     ret = template_contains_field(templ, http_fields[1].element_id | 0x8000);
     message_get_data((uint8_t **) &msg_data, rec + ret, http_fields[1].length);
     memcpy(http_url, msg_data, http_fields[1].length);
@@ -624,14 +624,14 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
         if ((p = (uint8_t *) strstr(http_url, "://")) != NULL) {
             memcpy(http_hostname, p + 3, strlen(http_url) - (p - (uint8_t *) &http_url[0])); // '+1' is to ignore '://'
         } else {
-            memcpy(http_hostname, http_url, 64);
+            memcpy(http_hostname, http_url, HTTP_FIELD_WORKING_SIZE);
         }
 
         // Check whether the URL (now copied to 'http_hostname') contains a path as well. If so, strip it.
         if ((p = (uint8_t *) strstr(http_hostname, "/")) != NULL) {
             memcpy(http_hostname, http_hostname, p - (uint8_t *) &http_hostname[0] - 1); // '-1' is to ignore '/'
         } else {
-            memcpy(http_hostname, http_hostname, 64);
+            memcpy(http_hostname, http_hostname, HTTP_FIELD_WORKING_SIZE);
         }
     }
 
