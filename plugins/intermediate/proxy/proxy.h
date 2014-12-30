@@ -94,8 +94,8 @@
 #define ntopHttpHost                    { 35632, 187, 32,  "ntopHttpHost" }
 #define ntopHttpUrl                     { 35632, 180, 64,  "ntopHttpUrl" }
 
-#define rsHttpHost                      { 44913,   1, 20,  "rsHttpHost" }
-#define rsHttpUrl                       { 44913,   2, 21,  "rsHttpUrl" }
+#define rsHttpHost                      { 44913,  20, 32,  "rsHttpHost" }
+#define rsHttpUrl                       { 44913,  21, 64,  "rsHttpUrl" }
 
 struct ipfix_entity {
     uint16_t pen;
@@ -172,9 +172,7 @@ struct proxy_config {
     uint32_t ip_id;
     struct ipfix_template_mgr *tm;
 
-    /*
-     * Variables for use by c-ares
-     */
+    // Variables for use by c-ares
     int ares_status;
     ares_channel ares_chan;
 
