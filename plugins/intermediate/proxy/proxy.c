@@ -486,11 +486,13 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct templ_stats_elem_t *templ_stats_new;
     HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id_new, templ_stats_new);
     if (templ_stats_new) {
+        templ_stats_new->http_fields_pen = templ_stats->http_fields_pen;
         templ_stats_new->ipv4 = templ_stats->ipv4;
         templ_stats_new->ipv6 = templ_stats->ipv6;
     } else {
         templ_stats_new = malloc(sizeof(struct templ_stats_elem_t));
         templ_stats_new->id = template_id_new;
+        templ_stats_new->http_fields_pen = templ_stats->http_fields_pen;
         templ_stats_new->ipv4 = templ_stats->ipv4;
         templ_stats_new->ipv6 = templ_stats->ipv6;
         HASH_ADD_INT(proc->plugin_conf->templ_stats, id, templ_stats_new);
