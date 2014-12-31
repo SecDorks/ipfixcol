@@ -149,8 +149,8 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
     // Determine IP versions used within this template
     template_id = ares_proc->templ->template_id;
     struct templ_stats_elem_t *templ_stats;
-    HASH_FIND_INT(ares_proc->proc->plugin_conf->templ_stats, &template_id, templ_stats);
-    if (!templ_stats) { // Do only if it was not done (successfully) before
+    HASH_FIND(hh, ares_proc->proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+    if (templ_stats == NULL) { // Do only if it was not done (successfully) before
         MSG_ERROR(msg_module, "Could not find template information (template ID: %u)", template_id);
         free(ares_proc->http_hostname);
         free(ares_proc);
@@ -304,8 +304,8 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     // Determine IP versions used within this template
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(record->template_id);
-    HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id, templ_stats);
-    if (!templ_stats) { // Do only if it was not done (successfully) before
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+    if (templ_stats == NULL) { // Do only if it was not done (successfully) before
         templ_stats = malloc(sizeof(struct templ_stats_elem_t));
         templ_stats->id = template_id;
         templ_stats->http_fields_pen = 0;
@@ -314,7 +314,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats->ipv6 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_entity) sourceIPv6Address).element_id, NULL) != NULL);
 
         // Store result in hashmap
-        HASH_ADD_INT(proc->plugin_conf->templ_stats, id, templ_stats);
+        HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats);
     }
 
     // Determine exporter PEN based on presence of certain enterprise-specific IEs
@@ -364,13 +364,12 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     uint32_t pen;
     unsigned int i;
 
-    // Get structure from hashmap that indicates whether template features IPv4 and/or IPv6 fields
+    // Get structure from hashmap that provides information about current template
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(old_rec->template_id);
-    HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id, templ_stats);
-
-    if (!templ_stats) {
-        MSG_ERROR(msg_module, "Could not find entry '%u' in hashmap; using original template", template_id);
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+    if (templ_stats == NULL) {
+        MSG_ERROR(msg_module, "Could not find entry '%u' in hashmap; using original template record", template_id);
 
         // Copy existing record to new message
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
@@ -487,7 +486,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
 
     // Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID)
     struct templ_stats_elem_t *templ_stats_new;
-    HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id_new, templ_stats_new);
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id_new, sizeof(uint16_t), templ_stats_new);
     if (templ_stats_new) {
         templ_stats_new->http_fields_pen = templ_stats->http_fields_pen;
         templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
@@ -500,7 +499,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
         templ_stats_new->ipv4 = templ_stats->ipv4;
         templ_stats_new->ipv6 = templ_stats->ipv6;
-        HASH_ADD_INT(proc->plugin_conf->templ_stats, id, templ_stats_new);
+        HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats_new);
     }
 
     free(new_rec);
@@ -520,12 +519,11 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     unsigned int i, j;
     int ret;
 
-    // Get structure from hashmap that indicates whether template features IPv4 and/or IPv6 fields
+    // Get structure from hashmap that provides information about current template
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = templ->template_id;
-    HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id, templ_stats);
-
-    if (!templ_stats) {
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+    if (templ_stats == NULL) {
         MSG_ERROR(msg_module, "Could not find entry '%u' in hashmap; using original data record", template_id);
         return;
     }

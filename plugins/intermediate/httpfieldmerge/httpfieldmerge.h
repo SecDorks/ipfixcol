@@ -126,8 +126,8 @@ struct httpfieldmerge_config {
     /*
      * Hashmap for storing the IP version used in every template by template ID. We
      * place this structure in proxy_config rather than proxy_processor, since
-     * it should be persistent between various IPFIX messages (and proxy processor)
-     * is reset for every IPFIX message.
+     * it should be persistent between various IPFIX messages (and proxy processor
+     * is reset for every IPFIX message).
      */
     struct templ_stats_elem_t *templ_stats;
 };
