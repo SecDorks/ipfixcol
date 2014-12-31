@@ -232,7 +232,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         return;
     }
 
-    // Replace enterprise-specific vields by vendors with 'unified' fields:
+    // Replace enterprise-specific fields by vendors with 'unified' fields:
     //     0. Copy original template record
     new_rec = calloc(1, rec_len);
     memcpy(new_rec, old_rec, rec_len);
@@ -247,8 +247,6 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         while (count < ntohs(new_rec->count)) {
             // Apply field mapping if enterprise-specific fields have been found
             if (ntohs(new_rec->fields[index].ie.id) == (http_fields[i].element_id | 0x8000)) {
-                field_modified = 1;
-
                 // Find mapping's target field
                 target_field = field_to_mapping_target(field_mappings, &http_fields[i]);
 
@@ -256,10 +254,16 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
                 new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
 
                 // No need to update the field length, since we require the lengths to be identical, for now
-                // new_rec->fields[index].ie.length = htons(target_field.length);
+                // new_rec->fields[index].ie.length = htons(target_field->length);
+                if (new_rec->fields[index].ie.length != htons(target_field->length)) {
+                    MSG_WARNING(msg_module, "Mapping source and target fields have different lengths \
+                        (template ID: %u, target field ID: %u, target field length: %u)", template_id, target_field->element_id, target_field->length);
+                }
+
+                field_modified = 1;
             }
 
-            // The enterprise number comes just after the IE, before the next IE
+            // If there is a PEN stored for this IE, it comes just after the IE, before the next IE
             if (ntohs(new_rec->fields[index].ie.id) >> 15) {
                 ++index;
             }
