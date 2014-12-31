@@ -303,7 +303,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
 
     // Determine IP versions used within this template
     struct templ_stats_elem_t *templ_stats;
-    int template_id = (int) ntohs(record->template_id);
+    uint16_t template_id = ntohs(record->template_id);
     HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id, templ_stats);
     if (!templ_stats) { // Do only if it was not done (successfully) before
         templ_stats = malloc(sizeof(struct templ_stats_elem_t));
@@ -366,7 +366,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
 
     // Get structure from hashmap that indicates whether template features IPv4 and/or IPv6 fields
     struct templ_stats_elem_t *templ_stats;
-    int template_id = (int) ntohs(old_rec->template_id);
+    uint16_t template_id = ntohs(old_rec->template_id);
     HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id, templ_stats);
 
     if (!templ_stats) {
@@ -471,7 +471,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     }
 
     //     2. Generate new template and store it in template manager
-    int template_id_new = (int) ntohs(new_rec->template_id);
+    uint16_t template_id_new = ntohs(new_rec->template_id);
     proc->key->tid = template_id_new;
     new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
     if (new_templ) {
@@ -522,7 +522,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     // Get structure from hashmap that indicates whether template features IPv4 and/or IPv6 fields
     struct templ_stats_elem_t *templ_stats;
-    int template_id = (int) templ->template_id;
+    uint16_t template_id = templ->template_id;
     HASH_FIND_INT(proc->plugin_conf->templ_stats, &template_id, templ_stats);
 
     if (!templ_stats) {
