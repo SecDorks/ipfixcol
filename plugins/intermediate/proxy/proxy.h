@@ -155,7 +155,7 @@ static struct field_mapping IPv6_field_mappings[] = {
 
 // Detection of these ports will trigger domain name resolution
 static int proxy_ports[] = {
-    80, 443, 3128, 8080
+    3128, 8080
 };
 
 struct templ_stats_elem_t {
