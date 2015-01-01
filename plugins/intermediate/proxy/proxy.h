@@ -68,6 +68,7 @@
 #include <ares.h>
 #include <netdb.h>
 #include <ipfixcol.h>
+#include <libxml/parser.h>
 
 #include "uthash.h"
 
@@ -154,7 +155,7 @@ static struct field_mapping IPv6_field_mappings[] = {
 #define mapping_count               4
 
 // Detection of these ports will trigger domain name resolution
-static int proxy_ports[] = {
+static int default_proxy_ports[] = {
     3128, 8080
 };
 
@@ -185,6 +186,13 @@ struct proxy_config {
      * is reset for every IPFIX message).
      */
     struct templ_stats_elem_t *templ_stats;
+
+    /*
+     * Will contain the proxy ports used by this plugin, either the default ports,
+     * or the ports specified in the plugin's XML configuration.
+     */
+    unsigned int proxy_port_count;
+    int *proxy_ports;
 };
 
 struct proxy_processor {

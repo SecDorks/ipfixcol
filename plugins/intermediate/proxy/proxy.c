@@ -547,8 +547,8 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
         message_get_data((uint8_t **) &msg_data, rec + ret, 2); // Port number fields (see port_number_fields) are 2 bytes in size
 
         // Check whether (source/destination) port number is a proxy port number
-        for (j = 0; j < sizeof(proxy_ports) / sizeof(int); ++j) {
-            if (ntohs((uint16_t) *msg_data) == proxy_ports[j]) {
+        for (j = 0; j < proc->plugin_conf->proxy_port_count; ++j) {
+            if (ntohs((uint16_t) *msg_data) == proc->plugin_conf->proxy_ports[j]) {
                 proxy_port_field_id = port_number_fields[i].element_id;
                 break;
             }
@@ -711,6 +711,10 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
  */
 int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipfix_template_mgr *template_mgr, void **config) {
     struct proxy_config *conf;
+    xmlDocPtr doc;
+    xmlNodePtr config_root;
+    xmlNodePtr cur;
+    unsigned int i;
 
     conf = (struct proxy_config *) malloc(sizeof(*conf));
     if (!conf) {
@@ -722,11 +726,110 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->ip_config = ip_config;
     conf->ip_id = ip_id;
     conf->tm = template_mgr;
+    conf->proxy_port_count = 0;
+
+    // Parse XML configuration: prelude
+    doc = xmlReadMemory(params, strlen(params), "nobase.xml", NULL, 0);
+    if (doc == NULL) {
+        MSG_ERROR(msg_module, "Could not parse plugin configuration");
+        free(conf);
+        return -1;
+    }
+
+    cur = xmlDocGetRootElement(doc);
+    if (cur == NULL) {
+        MSG_WARNING(msg_module, "Empty plugin configuration detected; falling back to default settings");
+        conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
+        conf->proxy_ports = default_proxy_ports;
+    }
+
+    if (xmlStrcmp(cur->name, (const xmlChar *) "proxy") != 0) {
+        MSG_ERROR(msg_module, "Bad plugin configuration detected (root node != 'proxy')");
+        free(conf);
+        return -1;
+    }
+
+    // Parse XML configuration: count number of proxy ports specified
+    config_root = cur->xmlChildrenNode;
+    cur = config_root;
+    while (cur != NULL) {
+        if (xmlStrcmp(cur->name, (const xmlChar *) "proxyPort") == 0) {
+            char *proxy_port_str = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+
+            // Only consider this node if its value is non-empty and not longer than 5 characters
+            if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
+                ++conf->proxy_port_count;
+            }
+
+            xmlFree(proxy_port_str);
+        } else if (xmlStrcmp(cur->name, (const xmlChar *) "comment") == 0) {
+            // Do nothing
+        } else {
+            MSG_WARNING(msg_module, "Unknown plugin configuration key ('%s')", cur->name);
+        }
+
+        cur = cur->next;
+    }
+
+    // Fall back to default settings if when no proxy ports have been specified in plugin configuration
+    if (conf->proxy_port_count == 0) {
+        MSG_WARNING(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
+        conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
+        conf->proxy_ports = default_proxy_ports;
+    } else {
+        // Parse XML configuration: parse proxy ports
+        conf->proxy_ports = malloc(conf->proxy_port_count * sizeof(int));
+        cur = config_root;
+        i = 0;
+        while (cur != NULL) {
+            if (xmlStrcmp(cur->name, (const xmlChar *) "proxyPort") == 0) {
+                char *proxy_port_str = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+
+                // Only consider this node if its value is non-empty and not longer than 5 characters
+                if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
+                    conf->proxy_ports[i] = atoi(proxy_port_str);
+                    ++i;
+                }
+
+                xmlFree(proxy_port_str);
+            }
+
+            cur = cur->next;
+        }
+    }
+
+    xmlFreeDoc(doc);
+    xmlCleanupParser();
+
+    /*
+     * Print proxy ports. Port numbers can feature at most 5 digits, and the
+     * glue (' ,') always consists of 2 digits. Also, we have to reserve one
+     * byte for the null-terminating character. The code that extracts the port
+     * numbers from the XML document ensures that port numbers never consist of
+     * more than 5 digits.
+     */
+    char proxy_port_str[(conf->proxy_port_count * 5) + ((conf->proxy_port_count - 1) * 2) + 1];
+    char buffer[5 + 1]; // Port numbers can feature at most 5 digits, +1 null-terminating character
+    for (i = 0; i < conf->proxy_port_count; ++i) {
+        sprintf(buffer, "%d", conf->proxy_ports[i]); 
+        if (i == 0) {
+            strcpy(proxy_port_str, buffer);
+        } else {
+            strcat(proxy_port_str, ", ");
+            strcat(proxy_port_str, buffer);
+        }
+    }
+    MSG_NOTICE(msg_module, "Proxy ports: %s", proxy_port_str);
 
     // Initialize c-ares
     if ((conf->ares_status = ares_init(&conf->ares_chan)) != ARES_SUCCESS){
         MSG_ERROR(msg_module, "Unable to initialize c-ares");
-        return 1;
+
+        if (conf->proxy_ports != default_proxy_ports) {
+            free(conf->proxy_ports);
+        }
+        free(conf);
+        return -1;
     }
 
     // Initialize (empty) hashmap
@@ -985,10 +1088,13 @@ int intermediate_close (void *config) {
         free(current_templ_stats); 
     }
 
-    free(conf);
-
     ares_destroy(conf->ares_chan);
     ares_library_cleanup();
+
+    if (conf->proxy_ports != default_proxy_ports) {
+        free(conf->proxy_ports);
+    }
+    free(conf);
 
     return 0;
 }

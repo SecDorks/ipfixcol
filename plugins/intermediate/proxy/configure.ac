@@ -72,8 +72,14 @@ AC_PROG_MAKE_SET
 
 ############################ Check for libraries ###############################
 
-### c-ares ###
-AC_SEARCH_LIBS([ares_init], [cares],, AC_MSG_ERROR([c-ares not found]))
+### libc-ares ###
+AC_SEARCH_LIBS([ares_init], [cares],, AC_MSG_ERROR([libc-ares not found]))
+
+### libxml2 ###
+AC_CHECK_LIB([xml2], [main],
+    [LIBS="`xml2-config --libs` $LIBS"
+    CFLAGS="`xml2-config --cflags` $CFLAGS"],
+    AC_MSG_ERROR([Libxml2 not found ]))
 
 ###################### Check for configure parameters ##########################
 
