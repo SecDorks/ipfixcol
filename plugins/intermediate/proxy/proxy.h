@@ -72,7 +72,7 @@
 
 #include "uthash.h"
 
-#define HTTP_FIELD_WORKING_SIZE 64
+#define HTTP_FIELD_WORKING_SIZE 65
 #define TEMPL_MAX_LEN 100000
 
 // IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)

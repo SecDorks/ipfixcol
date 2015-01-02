@@ -157,7 +157,11 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
         return;
     }
 
-    if (hostent == NULL || status != ARES_SUCCESS) {
+    /*
+     * There are cases in which domain name resolution is done for type 'AAAA', while there
+     * exists no AAAA record for that domain. In those cases, 'hostent->h_addr_list[0] == NULL'.
+     */
+    if (status != ARES_SUCCESS || hostent == NULL || hostent->h_addr_list[0] == NULL) {
         MSG_WARNING(msg_module, "Failed domain name resolution for '%s': %s", ares_proc->http_hostname, ares_strerror(status));
 
         // Copy original data record
@@ -688,7 +692,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     ares_proc->orig_rec_len = rec_len;
     ares_proc->port_number = port_number;
     ares_proc->proxy_port_field_id = proxy_port_field_id;
-    ares_proc->http_hostname = malloc(strlen(http_hostname));
+    ares_proc->http_hostname = malloc(strlen(http_hostname) + 1); // '+1' is for null-terminating character
     strcpy(ares_proc->http_hostname, http_hostname);
 
     // Perform asynchronous domain name resolution
@@ -1023,7 +1027,6 @@ int intermediate_process_message (void *config, void *message) {
         // Add padding bytes, if necessary
         if (proc.length % 4 != 0) {
             int padding_size = 4 - (proc.length % 4);
-            MSG_DEBUG(msg_module, "Data set needs %u bytes of padding (raw length: %u)", 4 - (proc.length % 4), proc.length);
 
             // FIXME Check RFC 7011: "The padding length MUST be shorter than any allowable record in this Set."
             memset(proc.msg + proc.offset, 0, padding_size);
