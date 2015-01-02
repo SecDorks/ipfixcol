@@ -637,8 +637,15 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
         }
     }
 
-    // Skip further processing if hostname information is not available or hostname can never be a valid FQDN
-    if (strcmp(http_hostname, "") == 0 || strstr(http_hostname, ".") == NULL) {
+    /*
+     * Skip further processing if...
+     *      - Hostname information is not available
+     *      - Hostname can never be a valid FQDN (i.e., does not contain a dot (.))
+     *      - Hostname is merely a parh (i.e., starts with a slash (/))
+     */
+    if (strcmp(http_hostname, "") == 0
+            || strstr(http_hostname, ".") == NULL
+            || http_hostname[0] == '/') {
         // Copy original data record
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
