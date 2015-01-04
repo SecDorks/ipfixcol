@@ -1033,12 +1033,11 @@ int intermediate_process_message (void *config, void *message) {
 
         // Add padding bytes, if necessary
         if (proc.length % 4 != 0) {
-            int padding_size = 4 - (proc.length % 4);
+            int padding_length = 4 - (proc.length % 4);
 
-            // FIXME Check RFC 7011: "The padding length MUST be shorter than any allowable record in this Set."
-            memset(proc.msg + proc.offset, 0, padding_size);
-            proc.offset += padding_size;
-            proc.length += padding_size;
+            memset(proc.msg + proc.offset, 0, padding_length);
+            proc.offset += padding_length;
+            proc.length += padding_length;
         }
 
         new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
