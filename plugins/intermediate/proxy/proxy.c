@@ -622,30 +622,32 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     // Check whether HTTP host is not stored in the 'httpHost' field and must be retrieved from 'httpUrl' field
     if (strcmp(http_hostname, "") == 0) {
-        // Check whether the URL contains a protocol specification (e.g., 'http://'). If so, strip it.
-        if ((p = (uint8_t *) strstr(http_url, "://")) != NULL) {
-            memcpy(http_hostname, p + 3, strlen(http_url) - (p - (uint8_t *) &http_url[0])); // '+1' is to ignore '://'
-        } else {
-            memcpy(http_hostname, http_url, HTTP_FIELD_WORKING_SIZE);
-        }
+        memcpy(http_hostname, http_url, HTTP_FIELD_WORKING_SIZE);
+    }
 
-        // Check whether the URL (now copied to 'http_hostname') contains a path as well. If so, strip it.
-        if ((p = (uint8_t *) strstr(http_hostname, "/")) != NULL) {
-            memcpy(http_hostname, http_hostname, p - (uint8_t *) &http_hostname[0] - 1); // '-1' is to ignore '/'
-        } else {
-            memcpy(http_hostname, http_hostname, HTTP_FIELD_WORKING_SIZE);
-        }
+    // Check whether the hostname contains a protocol specification (e.g., 'http://' or 'https://'). If so, strip it.
+    if ((p = (uint8_t *) strstr(http_hostname, "://")) != NULL) {
+        memcpy(http_hostname, p + 3, strlen(http_hostname) - (p - (uint8_t *) &http_hostname[0])); // '+3' is to ignore '://'
+    }
+
+    // Check whether the hostname contains a path as well. If so, strip it.
+    if ((p = (uint8_t *) strstr(http_hostname, "/")) != NULL) {
+        memcpy(http_hostname, http_hostname, p - (uint8_t *) &http_hostname[0] - 1); // '-1' is to ignore '/'
     }
 
     /*
      * Skip further processing if...
      *      - Hostname information is not available
      *      - Hostname can never be a valid FQDN (i.e., does not contain a dot (.))
-     *      - Hostname is merely a parh (i.e., starts with a slash (/))
+     *      - Hostname has the maximum field length, so we assume it is truncated and thus invalid
+     *      - Hostname is merely a path (i.e., starts with a slash (/))
+     *      - Hostname is malformed due to fixed length of 32 bytes (we often see a dot (.) as the first char)
      */
     if (strcmp(http_hostname, "") == 0
             || strstr(http_hostname, ".") == NULL
-            || http_hostname[0] == '/') {
+            || strlen(http_hostname) == http_fields[0].length
+            || http_hostname[0] == '/'
+            || http_hostname[0] == '.') {
         // Copy original data record
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
