@@ -80,7 +80,7 @@
 struct ipfix_entity {
     uint16_t pen;
     uint16_t element_id;
-    int length;
+    uint16_t length;
     char *entity_name;
 };
 
