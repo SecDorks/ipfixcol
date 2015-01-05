@@ -1,6 +1,6 @@
-# Docker container building script for running IPFIXcol in a separate
-# container. It is assumed that three files are present next on the same
-# file system level as this file:
+# Docker image building script for running IPFIXcol in dedicated containers.
+# It is assumed that three files are present on the same file system level
+# as this file:
 #
 #   rs_intercfg.xml
 #   rs_ipfix-elements.xml
@@ -8,17 +8,31 @@
 #
 # These files will be copied to the container and used for configuring IPFIXcol.
 # 
-# You can build this container as follows:
+# You can build this image as follows:
 #
 #   docker build -t ipfixcol .
 #       (Assumes the current working directory to be the directory with the Dockerfile)
 #
-# After building the container, which can easily take 15-30 minutes, the container
-# can be run as follows:
+# After building the image, which can easily take 15-30 minutes, a container (i.e.,
+# instance of the image built previously) can be run as follows:
 #
-#   docker run -d -p 3055:3055/udp -p 3056:3056/tcp -v /var/db/rs-app/fastbit/:/var/db/rs-app/fastbit/ ipfixcol
+#   docker run -d -p 3055:3055/udp -p 3056:3056/tcp -v /var/db/rs-app/fastbit/:/var/db/rs-app/fastbit/ --name ipfixcol ipfixcol
 #       (Once SCTP passthrough is supported by Docker, we add '-p 3057:3057/sctp' in the command above.
 #           Feature request: https://github.com/docker/docker/issues/9689)
+#
+# The container can be stopped as follows:
+#
+#   docker stop ipfixcol
+#
+# The following command can be used for creating a snapshot of an IPFIXcol container,
+# such that it can be deployed on other machines without the need of recompiling the
+# source:
+#
+#   docker export ipfixcol > rs_ipfixcol_export.tar
+#
+# An exported container can be loaded into Docker as follows:
+#
+#   cat rs_ipfixcol_export.tar | sudo docker import - ipfixcol
 #
 # Container output (e.g., stdout and stderr) can be obtained as follows:
 #
