@@ -620,19 +620,29 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     http_url[http_fields[1].length] = '\0';
     free(msg_data);
 
-    // Check whether HTTP host is not stored in the 'httpHost' field and must be retrieved from 'httpUrl' field
-    if (strcmp(http_hostname, "") == 0) {
+    /*
+     * Check whether HTTP host is not stored in the 'httpHost' field and must be retrieved from
+     * 'httpUrl' field. This should however only be done in case the 'httpUrl' field does not clearly
+     * feature only a path (i.e., the URL starts with '/').
+     */
+    int analyze_hostname = 0;
+    if (strcmp(http_hostname, "") != 0) {
+        analyze_hostname = 1;
+    } else if (http_url[0] != '/') { // --> strcmp(http_hostname, "") == 0
         memcpy(http_hostname, http_url, HTTP_FIELD_WORKING_SIZE);
+        analyze_hostname = 1;
     }
 
-    // Check whether the hostname contains a protocol specification (e.g., 'http://' or 'https://'). If so, strip it.
-    if ((p = (uint8_t *) strstr(http_hostname, "://")) != NULL) {
-        memcpy(http_hostname, p + 3, strlen(http_hostname) - (p - (uint8_t *) &http_hostname[0])); // '+3' is to ignore '://'
-    }
+    if (analyze_hostname) {
+        // Check whether the hostname contains a protocol specification (e.g., 'http://' or 'https://'). If so, strip it.
+        if ((p = (uint8_t *) strstr(http_hostname, "://")) != NULL) {
+            memcpy(http_hostname, p + 3, strlen(http_hostname) - (p - (uint8_t *) &http_hostname[0])); // '+3' is to ignore '://'
+        }
 
-    // Check whether the hostname contains a path as well. If so, strip it.
-    if ((p = (uint8_t *) strstr(http_hostname, "/")) != NULL) {
-        memcpy(http_hostname, http_hostname, p - (uint8_t *) &http_hostname[0] - 1); // '-1' is to ignore '/'
+        // Check whether the hostname contains a path as well. If so, strip it.
+        if ((p = (uint8_t *) strstr(http_hostname, "/")) != NULL) {
+            memcpy(http_hostname, http_hostname, p - (uint8_t *) &http_hostname[0] - 1); // '-1' is to ignore '/'
+        }
     }
 
     /*
@@ -643,7 +653,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
      *      - Hostname is merely a path (i.e., starts with a slash (/))
      *      - Hostname is malformed due to fixed length of 32 bytes (we often see a dot (.) as the first char)
      */
-    if (strcmp(http_hostname, "") == 0
+    if (analyze_hostname == 0
             || strstr(http_hostname, ".") == NULL
             || strlen(http_hostname) == http_fields[0].length
             || http_hostname[0] == '/'
