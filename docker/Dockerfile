@@ -115,6 +115,9 @@ WORKDIR /tmp/
 # RUN make; make install
 # WORKDIR /tmp/
 
+# Clean up temporary files (used for building IPFIXcol)
+RUN rm -r *
+
 # Create directory for IPFIXcol config files
 RUN mkdir /etc/ipfixcol
 
