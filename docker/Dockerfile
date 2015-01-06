@@ -36,7 +36,7 @@
 #
 # Container output (e.g., stdout and stderr) can be obtained as follows:
 #
-#   docker logs <container_id>
+#   docker logs ipfixcol
 #
 # Author:   Kirc <kirc&secdorks.net>
 #

@@ -636,12 +636,17 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     if (analyze_hostname) {
         // Check whether the hostname contains a protocol specification (e.g., 'http://' or 'https://'). If so, strip it.
         if ((p = (uint8_t *) strstr(http_hostname, "://")) != NULL) {
+            /*
+             * Shift memory contents such that the String is trimmed. Since we
+             * trim the String from the left, data can never be overwritten, so
+             * there is not need to use memmove (which avoids data corruption).
+             */
             memcpy(http_hostname, p + 3, strlen(http_hostname) - (p - (uint8_t *) &http_hostname[0])); // '+3' is to ignore '://'
         }
 
         // Check whether the hostname contains a path as well. If so, strip it.
         if ((p = (uint8_t *) strstr(http_hostname, "/")) != NULL) {
-            memcpy(http_hostname, http_hostname, p - (uint8_t *) &http_hostname[0] - 1); // '-1' is to ignore '/'
+            http_hostname[p - (uint8_t *) &http_hostname[0]] = '\0';
         }
     }
 
