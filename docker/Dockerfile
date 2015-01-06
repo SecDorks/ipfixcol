@@ -116,6 +116,7 @@ WORKDIR /tmp/
 # WORKDIR /tmp/
 
 # Clean up temporary files (used for building IPFIXcol)
+RUN apt-get clean
 RUN rm -r *
 
 # Create directory for IPFIXcol config files
