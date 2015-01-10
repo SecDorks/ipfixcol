@@ -1,4 +1,4 @@
-#<a name="top"></a>httpfieldmerge intermediate plugin for IPFIXcol
+#<a name="top"></a>Proxy intermediate plugin for IPFIXcol
 
 ## Table of Contents
 1.  [Description](#description)
