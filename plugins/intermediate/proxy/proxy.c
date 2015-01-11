@@ -717,7 +717,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     ares_proc->port_number = port_number;
     ares_proc->proxy_port_field_id = proxy_port_field_id;
     ares_proc->http_hostname = malloc(strlen(http_hostname) + 1); // '+1' is for null-terminating character
-    strcpy(ares_proc->http_hostname, http_hostname);
+    strncpy(ares_proc->http_hostname, http_hostname, HTTP_FIELD_WORKING_SIZE);
 
     // Perform asynchronous domain name resolution
     if (templ_stats->ipv4) {
@@ -841,7 +841,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     for (i = 0; i < conf->proxy_port_count; ++i) {
         sprintf(buffer, "%d", conf->proxy_ports[i]); 
         if (i == 0) {
-            strcpy(proxy_port_str, buffer);
+            strncpy(proxy_port_str, buffer, 5 + 1); // Port numbers can feature at most 5 digits, +1 null-terminating character
         } else {
             strcat(proxy_port_str, ", ");
             strcat(proxy_port_str, buffer);
