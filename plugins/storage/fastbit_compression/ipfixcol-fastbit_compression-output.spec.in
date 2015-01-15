@@ -23,12 +23,12 @@ Fastbit storage plugin for ipfixcol.
 %setup
 
 %post
-ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit -t fastbit -s "%{_datadir}/ipfixcol/plugins/ipfixcol-fastbit-output.so" -f
+ipfixconf add -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit_compression -t fastbitc -s "%{_datadir}/ipfixcol/plugins/ipfixcol-fastbit_compression-output.so" -f
 
 %preun
 
 %postun
-ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit
+ipfixconf remove -c "%{_sysconfdir}/ipfixcol/internalcfg.xml" -p o -n fastbit_compression
 
 %build
 %configure --with-distro=@DISTRO@
@@ -39,5 +39,5 @@ make DESTDIR=%{buildroot} install
 
 %files
 #storage plugins
-%{_datadir}/ipfixcol/plugins/ipfixcol-fastbit-output.*
-%{_mandir}/man1/ipfixcol-fastbit-output.1*
+%{_datadir}/ipfixcol/plugins/ipfixcol-fastbit_compression-output.*
+%{_mandir}/man1/ipfixcol-fastbit_compression-output.1*
