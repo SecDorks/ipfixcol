@@ -605,7 +605,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     struct ipfix_entity *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
 
     // Retrieve HTTP hostname
-    char http_hostname[HTTP_FIELD_WORKING_SIZE];
+    char http_hostname[HTTP_FIELD_WORKING_SIZE + 1];
     ret = template_contains_field(templ, http_fields[0].element_id | 0x8000);
     message_get_data((uint8_t **) &msg_data, rec + ret, http_fields[0].length);
     memcpy(http_hostname, msg_data, http_fields[0].length);
@@ -613,7 +613,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     free(msg_data);
 
     // Retrieve HTTP URL
-    char http_url[HTTP_FIELD_WORKING_SIZE];
+    char http_url[HTTP_FIELD_WORKING_SIZE + 1];
     ret = template_contains_field(templ, http_fields[1].element_id | 0x8000);
     message_get_data((uint8_t **) &msg_data, rec + ret, http_fields[1].length);
     memcpy(http_url, msg_data, http_fields[1].length);
@@ -717,7 +717,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     ares_proc->port_number = port_number;
     ares_proc->proxy_port_field_id = proxy_port_field_id;
     ares_proc->http_hostname = malloc(strlen(http_hostname) + 1); // '+1' is for null-terminating character
-    strncpy(ares_proc->http_hostname, http_hostname, HTTP_FIELD_WORKING_SIZE);
+    strncpy_safe(ares_proc->http_hostname, http_hostname, HTTP_FIELD_WORKING_SIZE);
 
     // Perform asynchronous domain name resolution
     if (templ_stats->ipv4) {
@@ -841,7 +841,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     for (i = 0; i < conf->proxy_port_count; ++i) {
         sprintf(buffer, "%d", conf->proxy_ports[i]); 
         if (i == 0) {
-            strncpy(proxy_port_str, buffer, 5 + 1); // Port numbers can feature at most 5 digits, +1 null-terminating character
+            strncpy_safe(proxy_port_str, buffer, 5 + 1); // Port numbers can feature at most 5 digits, +1 null-terminating character
         } else {
             strcat(proxy_port_str, ", ");
             strcat(proxy_port_str, buffer);
@@ -952,7 +952,7 @@ int intermediate_process_message (void *config, void *message) {
     // Process templates
     MSG_DEBUG(msg_module, "Processing template sets...");
     proc.type = TM_TEMPLATE;
-    for (i = 0; i < 1024 && msg->templ_set[i]; ++i) {
+    for (i = 0; i < MSG_MAX_TEMPLATES && msg->templ_set[i]; ++i) {
         prev_offset = proc.offset;
 
         /* Determine IP versions used within each template set and store result in hashmap. Also,
@@ -984,7 +984,7 @@ int intermediate_process_message (void *config, void *message) {
     // Process option templates
     MSG_DEBUG(msg_module, "Processing option template sets...");
     proc.type = TM_OPTIONS_TEMPLATE;
-    for (i = 0; i < 1024 && msg->opt_templ_set[i]; ++i) {
+    for (i = 0; i < MSG_MAX_OTEMPLATES && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
 
         // Add template set header, and update offset and length
@@ -1009,7 +1009,7 @@ int intermediate_process_message (void *config, void *message) {
 
     // Process data records
     MSG_DEBUG(msg_module, "Processing data sets...");
-    for (i = 0, new_i = 0; i < 1024 && msg->data_couple[i].data_set; ++i) {
+    for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
         templ = msg->data_couple[i].data_template;
 
         /*

@@ -439,7 +439,7 @@ int intermediate_process_message (void *config, void *message) {
     // Process templates
     MSG_DEBUG(msg_module, "Processing template sets...");
     proc.type = TM_TEMPLATE;
-    for (i = 0; i < 1024 && msg->templ_set[i]; ++i) {
+    for (i = 0; i < MSG_MAX_TEMPLATES && msg->templ_set[i]; ++i) {
         prev_offset = proc.offset;
 
         /* Determine IP versions used within each template set and store result in hashmap. Also,
@@ -471,7 +471,7 @@ int intermediate_process_message (void *config, void *message) {
     // Process option templates
     MSG_DEBUG(msg_module, "Processing option template sets...");
     proc.type = TM_OPTIONS_TEMPLATE;
-    for (i = 0; i < 1024 && msg->opt_templ_set[i]; ++i) {
+    for (i = 0; i < MSG_MAX_OTEMPLATES && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
 
         // Add template set header, and update offset and length
@@ -496,7 +496,7 @@ int intermediate_process_message (void *config, void *message) {
 
     // Process data records
     MSG_DEBUG(msg_module, "Processing data sets...");
-    for (i = 0, new_i = 0; i < 1024 && msg->data_couple[i].data_set; ++i) {
+    for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
         templ = msg->data_couple[i].data_template;
 
         /*
