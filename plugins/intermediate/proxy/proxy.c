@@ -850,7 +850,12 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     MSG_NOTICE(msg_module, "Proxy ports: %s", proxy_port_str);
 
     // Initialize c-ares
-    if ((conf->ares_status = ares_init(&conf->ares_chan)) != ARES_SUCCESS){
+    struct ares_options ares_opts;
+    ares_opts.timeout = 1;
+    ares_opts.tries = 1;
+    if ((conf->ares_status = ares_init_options(&conf->ares_chan, &ares_opts,
+                (ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES)
+            )) != ARES_SUCCESS) {    
         MSG_ERROR(msg_module, "Unable to initialize c-ares");
 
         if (conf->proxy_ports != default_proxy_ports) {
