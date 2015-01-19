@@ -717,7 +717,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     ares_proc->port_number = port_number;
     ares_proc->proxy_port_field_id = proxy_port_field_id;
     ares_proc->http_hostname = malloc(strlen(http_hostname) + 1); // '+1' is for null-terminating character
-    strncpy_safe(ares_proc->http_hostname, http_hostname, HTTP_FIELD_WORKING_SIZE);
+    strncpy_safe(ares_proc->http_hostname, http_hostname, strlen(http_hostname) + 1);
 
     // Perform asynchronous domain name resolution
     if (templ_stats->ipv4) {
