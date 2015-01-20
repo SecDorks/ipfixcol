@@ -778,73 +778,73 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
         MSG_NOTICE(msg_module, "Empty plugin configuration detected; falling back to default settings");
         conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
         conf->proxy_ports = default_proxy_ports;
-    }
-
-    if (xmlStrcmp(node->name, (const xmlChar *) "proxy") != 0) {
-        MSG_ERROR(msg_module, "Bad plugin configuration detected (root node != 'proxy')");
-        free(conf);
-        return -1;
-    }
-
-    // Parse XML configuration: count number of proxy ports specified
-    config_root = node->xmlChildrenNode;
-    node = config_root;
-    while (node != NULL) {
-        // Skip processing this node in case it's a comment
-        if (node->type == XML_COMMENT_NODE) {
-            node = node->next;
-            continue;
-        }
-
-        if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
-            char *proxy_port_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-
-            // Only consider this node if its value is non-empty and not longer than 5 characters
-            if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
-                ++conf->proxy_port_count;
-            }
-
-            xmlFree(proxy_port_str);
-        } else if (xmlStrcmp(node->name, (const xmlChar *) "statInterval") == 0) {
-            char *stat_interval_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-
-            // Only consider this node if its value is non-empty
-            if (strlen(stat_interval_str) > 0) {
-                conf->stat_interval = atoi(stat_interval_str);
-            }
-
-            xmlFree(stat_interval_str);
-        } else {
-            MSG_WARNING(msg_module, "Unknown plugin configuration key ('%s')", node->name);
-        }
-
-        node = node->next;
-    }
-
-    // Fall back to default settings if when no proxy ports have been specified in plugin configuration
-    if (conf->proxy_port_count == 0) {
-        MSG_NOTICE(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
-        conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
-        conf->proxy_ports = default_proxy_ports;
     } else {
-        // Parse XML configuration: parse proxy ports
-        conf->proxy_ports = malloc(conf->proxy_port_count * sizeof(int));
+        if (xmlStrcmp(node->name, (const xmlChar *) "proxy") != 0) {
+            MSG_ERROR(msg_module, "Bad plugin configuration detected (root node != 'proxy')");
+            free(conf);
+            return -1;
+        }
+
+        // Parse XML configuration: count number of proxy ports specified
+        config_root = node->xmlChildrenNode;
         node = config_root;
-        i = 0;
         while (node != NULL) {
+            // Skip processing this node in case it's a comment
+            if (node->type == XML_COMMENT_NODE) {
+                node = node->next;
+                continue;
+            }
+
             if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
                 char *proxy_port_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 
                 // Only consider this node if its value is non-empty and not longer than 5 characters
                 if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
-                    conf->proxy_ports[i] = atoi(proxy_port_str);
-                    ++i;
+                    ++conf->proxy_port_count;
                 }
 
                 xmlFree(proxy_port_str);
+            } else if (xmlStrcmp(node->name, (const xmlChar *) "statInterval") == 0) {
+                char *stat_interval_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+
+                // Only consider this node if its value is non-empty
+                if (strlen(stat_interval_str) > 0) {
+                    conf->stat_interval = atoi(stat_interval_str);
+                }
+
+                xmlFree(stat_interval_str);
+            } else {
+                MSG_WARNING(msg_module, "Unknown plugin configuration key ('%s')", node->name);
             }
 
             node = node->next;
+        }
+
+        // Fall back to default settings if when no proxy ports have been specified in plugin configuration
+        if (conf->proxy_port_count == 0) {
+            MSG_NOTICE(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
+            conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
+            conf->proxy_ports = default_proxy_ports;
+        } else {
+            // Parse XML configuration: parse proxy ports
+            conf->proxy_ports = malloc(conf->proxy_port_count * sizeof(int));
+            node = config_root;
+            i = 0;
+            while (node != NULL) {
+                if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
+                    char *proxy_port_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+
+                    // Only consider this node if its value is non-empty and not longer than 5 characters
+                    if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
+                        conf->proxy_ports[i] = atoi(proxy_port_str);
+                        ++i;
+                    }
+
+                    xmlFree(proxy_port_str);
+                }
+
+                node = node->next;
+            }
         }
     }
 
