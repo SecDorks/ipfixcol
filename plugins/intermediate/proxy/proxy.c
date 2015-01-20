@@ -65,8 +65,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+#include <pthread.h>
 
 #include "proxy.h"
+#include "proxy_config.h"
+#include "proxy_stat_thread.h"
 
 // Identifier for MSG_* macros
 static char *msg_module = "proxy";
@@ -741,7 +745,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     struct proxy_config *conf;
     xmlDocPtr doc;
     xmlNodePtr config_root;
-    xmlNodePtr cur;
+    xmlNodePtr node;
     unsigned int i;
 
     conf = (struct proxy_config *) malloc(sizeof(*conf));
@@ -755,6 +759,8 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->ip_id = ip_id;
     conf->tm = template_mgr;
     conf->proxy_port_count = 0;
+    conf->stat_interval = 20;
+    conf->stat_done = 0;
 
     // Parse XML configuration: prelude
     doc = xmlReadMemory(params, strlen(params), "nobase.xml", NULL, 0);
@@ -764,25 +770,31 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
         return -1;
     }
 
-    cur = xmlDocGetRootElement(doc);
-    if (cur == NULL) {
-        MSG_WARNING(msg_module, "Empty plugin configuration detected; falling back to default settings");
+    node = xmlDocGetRootElement(doc);
+    if (node == NULL) {
+        MSG_NOTICE(msg_module, "Empty plugin configuration detected; falling back to default settings");
         conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
         conf->proxy_ports = default_proxy_ports;
     }
 
-    if (xmlStrcmp(cur->name, (const xmlChar *) "proxy") != 0) {
+    if (xmlStrcmp(node->name, (const xmlChar *) "proxy") != 0) {
         MSG_ERROR(msg_module, "Bad plugin configuration detected (root node != 'proxy')");
         free(conf);
         return -1;
     }
 
     // Parse XML configuration: count number of proxy ports specified
-    config_root = cur->xmlChildrenNode;
-    cur = config_root;
-    while (cur != NULL) {
-        if (xmlStrcmp(cur->name, (const xmlChar *) "proxyPort") == 0) {
-            char *proxy_port_str = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+    config_root = node->xmlChildrenNode;
+    node = config_root;
+    while (node != NULL) {
+        // Skip processing this node in case it's a comment
+        if (node->type == XML_COMMENT_NODE) {
+            node = node->next;
+            continue;
+        }
+
+        if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
+            char *proxy_port_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 
             // Only consider this node if its value is non-empty and not longer than 5 characters
             if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
@@ -790,28 +802,35 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             }
 
             xmlFree(proxy_port_str);
-        } else if (xmlStrcmp(cur->name, (const xmlChar *) "comment") == 0) {
-            // Do nothing
+        } else if (xmlStrcmp(node->name, (const xmlChar *) "statInterval") == 0) {
+            char *stat_interval_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+
+            // Only consider this node if its value is non-empty
+            if (strlen(stat_interval_str) > 0) {
+                conf->stat_interval = atoi(stat_interval_str);
+            }
+
+            xmlFree(stat_interval_str);
         } else {
-            MSG_WARNING(msg_module, "Unknown plugin configuration key ('%s')", cur->name);
+            MSG_WARNING(msg_module, "Unknown plugin configuration key ('%s')", node->name);
         }
 
-        cur = cur->next;
+        node = node->next;
     }
 
     // Fall back to default settings if when no proxy ports have been specified in plugin configuration
     if (conf->proxy_port_count == 0) {
-        MSG_WARNING(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
+        MSG_NOTICE(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
         conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
         conf->proxy_ports = default_proxy_ports;
     } else {
         // Parse XML configuration: parse proxy ports
         conf->proxy_ports = malloc(conf->proxy_port_count * sizeof(int));
-        cur = config_root;
+        node = config_root;
         i = 0;
-        while (cur != NULL) {
-            if (xmlStrcmp(cur->name, (const xmlChar *) "proxyPort") == 0) {
-                char *proxy_port_str = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+        while (node != NULL) {
+            if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
+                char *proxy_port_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 
                 // Only consider this node if its value is non-empty and not longer than 5 characters
                 if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
@@ -822,7 +841,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
                 xmlFree(proxy_port_str);
             }
 
-            cur = cur->next;
+            node = node->next;
         }
     }
 
@@ -847,22 +866,41 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             strcat(proxy_port_str, buffer);
         }
     }
-    MSG_NOTICE(msg_module, "Proxy ports: %s", proxy_port_str);
+
+    MSG_NOTICE(msg_module, "Proxy port(s): %s", proxy_port_str);
+
+    // Print stat interval value
+    if (conf->stat_interval == 0) {
+        MSG_NOTICE(msg_module, "Statistics thread disabled");
+    } else {
+        MSG_NOTICE(msg_module, "Statistics thread execution interval: %us", conf->stat_interval);
+    }
 
     // Initialize c-ares
     struct ares_options ares_opts;
     ares_opts.timeout = 1;
     ares_opts.tries = 1;
-    if ((conf->ares_status = ares_init_options(&conf->ares_chan, &ares_opts,
-                (ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES)
-            )) != ARES_SUCCESS) {    
+    conf->ares_status = ares_init_options(&conf->ares_chan, &ares_opts,
+            (ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES)
+    );
+    if (conf->ares_status != ARES_SUCCESS) {    
         MSG_ERROR(msg_module, "Unable to initialize c-ares");
 
         if (conf->proxy_ports != default_proxy_ports) {
             free(conf->proxy_ports);
         }
+
         free(conf);
         return -1;
+    }
+
+    // Initialize statistics thread
+    if (conf->stat_interval > 0) {
+        if (pthread_create(&(conf->stat_thread), NULL, &stat_thread, (void *) conf) != 0) {
+            MSG_ERROR(msg_module, "Unable to create statistics thread");
+            free(conf);
+            return -1;
+        }
     }
 
     // Initialize (empty) hashmap
@@ -1117,6 +1155,13 @@ int intermediate_close (void *config) {
     HASH_ITER(hh, conf->templ_stats, current_templ_stats, tmp) {
         HASH_DEL(conf->templ_stats, current_templ_stats);
         free(current_templ_stats); 
+    }
+
+    // Stop statistics thread
+    if (conf->stat_interval > 0) {
+        conf->stat_done = 1;
+        pthread_kill(conf->stat_thread, SIGUSR1);
+        pthread_join(conf->stat_thread, NULL);
     }
 
     ares_destroy(conf->ares_chan);

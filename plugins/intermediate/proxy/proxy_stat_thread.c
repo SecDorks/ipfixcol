@@ -1,5 +1,5 @@
 /*
- * \file proxy.h
+ * \file proxy_stat_thread.c
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'proxy' intermediate plugin.
  *
@@ -62,85 +62,51 @@
  *
  */
 
-#ifndef PROXY_H_
-#define PROXY_H_
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <pthread.h>
+#include <unistd.h>
 
-#include <ares.h>
-#include <netdb.h>
-#include <ipfixcol.h>
-#include <libxml/parser.h>
+#include "queues.h"
+#include "proxy_stat_thread.h"
+#include "proxy.h"
 
-#include "uthash.h"
+// Identifier for MSG_* macros
+static char *msg_module = "proxy_stat_thread";
 
-struct ipfix_entity {
-    uint16_t pen;
-    uint16_t element_id;
-    uint16_t length;
-    char *entity_name;
-};
+/**
+ * \brief Dummy SIGUSR1 signal handler
+ */
+void sig_handler (int s) {
+    (void) s;
+}
 
-struct templ_stats_elem_t {
-    int id;                         // Hash key
-    uint32_t http_fields_pen;       // Exporter PEN in case template contains HTTP-related fields
-    int http_fields_pen_determined; // Indicates whether the PEN belonging HTTP-related has been determined before
-    int ipv4;                       // Indicates whether template contains IPv4 address fields
-    int ipv6;                       // Indicates whether template contains IPv6 address fields
-    UT_hash_handle hh;              // Hash handle for internal hash functioning
-};
+/**
+ *  \brief Main routine of statistics thread
+ *
+ * \param[in] config configuration structure for thread
+ * \return NULL once thread shutdown is signaled by proxy plugin
+ */
+void *stat_thread (void* config) {
+    struct proxy_config *conf = (struct proxy_config *) config;
 
-// Stores plugin's internal configuration
-struct proxy_config {
-    char *params;
-    void *ip_config;
-    uint32_t ip_id;
-    struct ipfix_template_mgr *tm;
-    pthread_t stat_thread;
-    uint16_t stat_interval;
-    uint8_t stat_done;
+    // Catch SIGUSR1
+    signal(SIGUSR1, sig_handler);
 
-    // Variables for use by c-ares
-    int ares_status;
-    ares_channel ares_chan;
+    while (conf->stat_interval) {
+        sleep(conf->stat_interval);
 
-    /*
-     * Hashmap for storing the IP version used in every template by template ID. We
-     * place this structure in proxy_config rather than proxy_processor, since
-     * it should be persistent between various IPFIX messages (and proxy processor
-     * is reset for every IPFIX message).
-     */
-    struct templ_stats_elem_t *templ_stats;
+        // Check whether thread should be killed (by proxy plugin)
+        if (conf->stat_done) {
+            break;
+        }
 
-    /*
-     * Will contain the proxy ports used by this plugin, either the default ports,
-     * or the ports specified in the plugin's XML configuration.
-     */
-    unsigned int proxy_port_count;
-    int *proxy_ports;
-};
+        struct ip_config *ip_conf = (struct ip_config *) conf->ip_config;
 
-struct proxy_processor {
-    uint8_t *msg;
-    uint16_t offset;
-    uint32_t length, odid;
-    int type;
+        MSG_INFO(msg_module, "Messages in input queue: %u; messages in output queue: %u", ip_conf->in_queue->count, ip_conf->out_queue->count);
+    }
 
-    ares_channel *ares_chan; // Channel used for domain name resolutions
-    
-    struct proxy_config *plugin_conf; // Pointer to proxy_config, such that we don't have to store some pointers twice
-    struct ipfix_template_key *key; // Stores the key of a newly added template within the template manager
-};
-
-struct proxy_ares_processor {
-    struct proxy_processor *proc;
-    struct ipfix_template *templ;
-
-    uint8_t *orig_rec;
-    int orig_rec_len;
-
-    char *http_hostname;
-    int port_number;
-
-    int proxy_port_field_id;
-};
-
-#endif /* PROXY_H_ */
+    return NULL;
+}

@@ -81,6 +81,11 @@ AC_CHECK_LIB([xml2], [main],
     CFLAGS="`xml2-config --cflags` $CFLAGS"],
     AC_MSG_ERROR([Libxml2 not found ]))
 
+### pthread ###
+AC_CHECK_LIB([pthread], [pthread_create], 
+    [CFLAGS="$CFLAGS -pthread"],
+    AC_MSG_ERROR([Required library pthread missing]))
+
 ###################### Check for configure parameters ##########################
 
 AC_ARG_ENABLE([debug], 
@@ -100,7 +105,13 @@ AS_IF([test -d $srcdir/../../../base/headers],
     [CPPFLAGS="$CPPFLAGS -I$srcdir/../../../base/headers"]
 )
 
+# Check whether we can find queues.h, needed for proxy plugin's statistics thread
+AS_IF([test -f $srcdir/../../../base/src/queues.h], 
+    [CPPFLAGS="$CPPFLAGS -I$srcdir/../../../base/src"]
+)
+
 AC_CHECK_HEADERS([ipfixcol.h], , AC_MSG_ERROR([ipfixcol.h header missing. Please install ipfixcol-devel package]), [AC_INCLUDES_DEFAULT])
+AC_CHECK_HEADERS([queues.h], , AC_MSG_ERROR([queues.h header missing. Please install ipfixcol-devel package]), [AC_INCLUDES_DEFAULT])
 
 ######## Checks for typedefs, structures, and compiler characteristics #########
 
