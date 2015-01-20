@@ -291,7 +291,10 @@ static void ares_wait (ares_channel channel) {
         }
 
         tvp = ares_timeout(channel, NULL, &tv);
-        select(nfds, &read_fds, &write_fds, NULL, tvp);
+
+        if (select(nfds, &read_fds, &write_fds, NULL, tvp) == -1) {
+            MSG_ERROR(msg_module, "An error occurred while calling select()");
+        }
         ares_process(channel, &read_fds, &write_fds);
     }
 }
