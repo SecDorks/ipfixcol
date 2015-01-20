@@ -307,6 +307,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats_new->id = template_id_new;
         templ_stats_new->http_fields_pen = TARGET_FIELD_PEN;
         templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
+        HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats_new);
     }
 
     free(new_rec);
