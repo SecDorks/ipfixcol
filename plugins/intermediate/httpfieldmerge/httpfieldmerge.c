@@ -244,7 +244,8 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     for (i = 0; i < vendor_fields_count; ++i) {
         // Iterate over all fields in template record
         unsigned int count = 0, index = 0, field_modified = 0;
-        while (count < ntohs(new_rec->count)) {
+        while (count < ntohs(new_rec->count)
+                && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
             // Apply field mapping if enterprise-specific fields have been found
             if (ntohs(new_rec->fields[index].ie.id) == (http_fields[i].element_id | 0x8000)) {
                 // Find mapping's target field
@@ -254,7 +255,6 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
                 new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
 
                 // No need to update the field length, since we require the lengths to be identical, for now
-                // new_rec->fields[index].ie.length = htons(target_field->length);
                 if (new_rec->fields[index].ie.length != htons(target_field->length)) {
                     MSG_WARNING(msg_module, "Mapping source and target fields have different lengths \
                         (template ID: %u, target field ID: %u, target field length: %u)", template_id, target_field->element_id, target_field->length);
