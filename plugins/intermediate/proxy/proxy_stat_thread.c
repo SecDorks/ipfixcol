@@ -67,6 +67,7 @@
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 
 #include "queues.h"
@@ -94,6 +95,9 @@ void *stat_thread (void* config) {
 
     // Catch SIGUSR1
     signal(SIGUSR1, sig_handler);
+
+    // Set thread name
+    prctl(PR_SET_NAME, "med:proxy:stats", 0, 0, 0);
 
     while (conf->stat_interval) {
         sleep(conf->stat_interval);
