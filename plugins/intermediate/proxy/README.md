@@ -60,6 +60,10 @@ to be specified, each featuring exactly one port number. This will overwrite the
 port numbers listed above. If no `proxyPort` tags are specified, the default proxy port numbers
 are taken.
 
+In addition to proxy ports, the interval in which statistics are reported to the console can be
+configured by means of the `statInterval` tag. The configured value must be a non-negative integer,
+in seconds. If no `statInterval` tag is present, a default interval of 20 seconds is used.
+
 Example:
 
 ```xml
