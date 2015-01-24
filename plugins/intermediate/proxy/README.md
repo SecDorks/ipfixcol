@@ -75,6 +75,9 @@ Example:
         <proxyPort>443</proxyPort>
         <proxyPort>3128</proxyPort>
         <proxyPort>8080</proxyPort>
+
+        <!-- Interval (in seconds) in which plugins statistics are calculated and shown -->
+        <statInterval>10</statInterval>
     </proxy>
 </intermediatePlugins>
 ```

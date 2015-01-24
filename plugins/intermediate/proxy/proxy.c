@@ -762,7 +762,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->ip_id = ip_id;
     conf->tm = template_mgr;
     conf->proxy_port_count = 0;
-    conf->stat_interval = 20;
+    conf->stat_interval = DEFAULT_STAT_INTERVAL;
     conf->stat_done = 0;
 
     // Parse XML configuration: prelude
