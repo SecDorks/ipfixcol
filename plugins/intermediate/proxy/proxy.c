@@ -272,7 +272,7 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
 }
 
 /**
- * \brief Waits for all domain name resolutions to be ready
+ * \brief Waits for all domain name resolutions to be ready.
  *
  * \param[in] channel c-ares name service channel
  */
@@ -296,6 +296,30 @@ static void ares_wait (ares_channel channel) {
             MSG_ERROR(msg_module, "An error occurred while calling select()");
         }
         ares_process(channel, &read_fds, &write_fds);
+    }
+}
+
+/**
+ * \brief Destroys all c-ares name service channels in the provided pool.
+ *
+ * \param[in] pool c-ares name service pool (ares_channel[])
+ */
+void ares_destroy_all_channels (ares_channel *pool) {
+    unsigned int i;
+    for (i = 0; i < MAX_ARES_CHANNELS; ++i) {
+        ares_destroy(pool[i]);
+    }
+}
+
+/**
+ * \brief Waits for all c-ares name service channels to be ready.
+ *
+ * \param[in] pool c-ares name service pool (ares_channel[])
+ */
+void ares_wait_all_channels (ares_channel *pool) {
+    unsigned int i;
+    for (i = 0; i < MAX_ARES_CHANNELS; ++i) {
+        ares_wait(pool[i]);
     }
 }
 
@@ -727,10 +751,11 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     strncpy_safe(ares_proc->http_hostname, http_hostname, strlen(http_hostname) + 1);
 
     // Perform asynchronous domain name resolution
+    *proc->ares_channel_id = (*proc->ares_channel_id + 1) % MAX_ARES_CHANNELS;
     if (templ_stats->ipv4) {
-        ares_gethostbyname(*proc->ares_chan, http_hostname, AF_INET, ares_cb, ares_proc);
+        ares_gethostbyname(proc->ares_channels[*proc->ares_channel_id], http_hostname, AF_INET, ares_cb, ares_proc);
     } else {
-        ares_gethostbyname(*proc->ares_chan, http_hostname, AF_INET6, ares_cb, ares_proc);
+        ares_gethostbyname(proc->ares_channels[*proc->ares_channel_id], http_hostname, AF_INET6, ares_cb, ares_proc);
     }
 }
 
@@ -883,19 +908,33 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     struct ares_options ares_opts;
     ares_opts.timeout = 1;
     ares_opts.tries = 1;
-    conf->ares_status = ares_init_options(&conf->ares_chan, &ares_opts,
-            (ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES)
-    );
-    if (conf->ares_status != ARES_SUCCESS) {    
-        MSG_ERROR(msg_module, "Unable to initialize c-ares");
+    int ares_status = 0;
+    for (i = 0; i < MAX_ARES_CHANNELS; ++i) {
+        ares_status = ares_init_options(&conf->ares_channels[i], &ares_opts,
+                (ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES)
+        );
 
-        if (conf->proxy_ports != default_proxy_ports) {
-            free(conf->proxy_ports);
+        if (ares_status != ARES_SUCCESS) {
+            MSG_ERROR(msg_module, "Unable to initialize c-ares (channel ID: %u)", i);
+
+            // Destroying all previously initialized channels
+            unsigned int j;
+            for (j = 0; j < i; ++j) {
+                ares_destroy(conf->ares_channels[j]);
+            }
+
+            ares_library_cleanup();
+
+            if (conf->proxy_ports != default_proxy_ports) {
+                free(conf->proxy_ports);
+            }
+
+            free(conf);
+            return -1;
         }
-
-        free(conf);
-        return -1;
     }
+
+    conf->ares_channel_id = 0;
 
     // Initialize statistics thread
     if (conf->stat_interval > 0) {
@@ -990,7 +1029,8 @@ int intermediate_process_message (void *config, void *message) {
     proc.offset = IPFIX_HEADER_LENGTH;
 
     // Initialize processing structure
-    proc.ares_chan = &conf->ares_chan;
+    proc.ares_channels = &conf->ares_channels[0];
+    proc.ares_channel_id = &conf->ares_channel_id;
     proc.odid = msg->input_info->odid;
     proc.key = tm_key_create(info->odid, conf->ip_id, 0); // Template ID (0) will be overwritten in a later stage
     proc.plugin_conf = config;
@@ -1092,7 +1132,7 @@ int intermediate_process_message (void *config, void *message) {
         data_set_process_records(msg->data_couple[i].data_set, templ, &data_processor, (void *) &proc);
 
         // Wait for all domain name resolutions to have completed
-        ares_wait(conf->ares_chan);
+        ares_wait_all_channels(&conf->ares_channels[0]);
 
         // Add padding bytes, if necessary
         if (proc.length % 4 != 0) {
@@ -1167,7 +1207,7 @@ int intermediate_close (void *config) {
         pthread_join(conf->stat_thread, NULL);
     }
 
-    ares_destroy(conf->ares_chan);
+    ares_destroy_all_channels(&conf->ares_channels[0]);
     ares_library_cleanup();
 
     if (conf->proxy_ports != default_proxy_ports) {
