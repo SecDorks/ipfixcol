@@ -787,6 +787,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->ip_id = ip_id;
     conf->tm = template_mgr;
     conf->proxy_port_count = 0;
+
     conf->stat_interval = DEFAULT_STAT_INTERVAL;
     conf->stat_done = 0;
 
@@ -897,11 +898,17 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
     MSG_NOTICE(msg_module, "Proxy port(s): %s", proxy_port_str);
 
-    // Print stat interval value
-    if (conf->stat_interval == 0) {
-        MSG_NOTICE(msg_module, "Statistics thread disabled");
-    } else {
+    // Initialize statistics thread
+    if (conf->stat_interval > 0) {
         MSG_NOTICE(msg_module, "Statistics thread execution interval: %us", conf->stat_interval);
+
+        if (pthread_create(&(conf->stat_thread), NULL, &stat_thread, (void *) conf) != 0) {
+            MSG_ERROR(msg_module, "Unable to create statistics thread");
+            free(conf);
+            return -1;
+        }
+    } else {
+        MSG_NOTICE(msg_module, "Statistics thread disabled");
     }
 
     // Initialize c-ares
@@ -935,15 +942,6 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     }
 
     conf->ares_channel_id = 0;
-
-    // Initialize statistics thread
-    if (conf->stat_interval > 0) {
-        if (pthread_create(&(conf->stat_thread), NULL, &stat_thread, (void *) conf) != 0) {
-            MSG_ERROR(msg_module, "Unable to create statistics thread");
-            free(conf);
-            return -1;
-        }
-    }
 
     // Initialize (empty) hashmap
     conf->templ_stats = NULL;
