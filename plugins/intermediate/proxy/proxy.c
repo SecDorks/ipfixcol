@@ -565,6 +565,8 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     // Skip further processing if template does not include HTTP IEs (hostname, URL)
     if (templ_stats->http_fields_pen == 0) {
+        ++proc->plugin_conf->records_wo_resolution;
+
         // Copy original data record
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
@@ -599,6 +601,8 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     // Skip further processing if record does not feature proxy traffic
     if (!proxy_port_field_id) {
+        ++proc->plugin_conf->records_wo_resolution;
+
         // Copy original data record
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
@@ -694,6 +698,8 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
             || strlen(http_hostname) == http_fields[0].length
             || http_hostname[0] == '/'
             || http_hostname[0] == '.') {
+        ++proc->plugin_conf->records_wo_resolution;
+
         // Copy original data record
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
@@ -726,6 +732,8 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
         return;
     }
+
+    ++proc->plugin_conf->records_resolution;
 
     // Check whether 'httpHost' also contains a port number (80: default port number)
     int port_number = 80; // Default value
@@ -788,8 +796,10 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->tm = template_mgr;
     conf->proxy_port_count = 0;
 
-    conf->stat_interval = DEFAULT_STAT_INTERVAL;
     conf->stat_done = 0;
+    conf->stat_interval = DEFAULT_STAT_INTERVAL;
+    conf->records_resolution = 0;
+    conf->records_wo_resolution = 0;
 
     // Parse XML configuration: prelude
     doc = xmlReadMemory(params, strlen(params), "nobase.xml", NULL, 0);

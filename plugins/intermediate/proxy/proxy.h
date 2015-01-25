@@ -65,7 +65,7 @@
 #ifndef PROXY_H_
 #define PROXY_H_
 
-#define ARES_CHANNELS 10
+#define ARES_CHANNELS 20
 
 #include <ares.h>
 #include <netdb.h>
@@ -96,9 +96,13 @@ struct proxy_config {
     void *ip_config;
     uint32_t ip_id;
     struct ipfix_template_mgr *tm;
+
+    // Variables for use by statistics thread
     pthread_t stat_thread;
-    uint16_t stat_interval;
     uint8_t stat_done;
+    uint16_t stat_interval;
+    uint64_t records_resolution;
+    uint64_t records_wo_resolution;
 
     // Variables for use by c-ares
     ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels
