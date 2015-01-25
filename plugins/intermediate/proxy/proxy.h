@@ -65,6 +65,8 @@
 #ifndef PROXY_H_
 #define PROXY_H_
 
+#define ARES_CHANNELS 20
+
 #include <ares.h>
 #include <netdb.h>
 #include <ipfixcol.h>
@@ -94,13 +96,17 @@ struct proxy_config {
     void *ip_config;
     uint32_t ip_id;
     struct ipfix_template_mgr *tm;
+
+    // Variables for use by statistics thread
     pthread_t stat_thread;
-    uint16_t stat_interval;
     uint8_t stat_done;
+    uint16_t stat_interval;
+    uint64_t records_resolution;
+    uint64_t records_wo_resolution;
 
     // Variables for use by c-ares
-    int ares_status;
-    ares_channel ares_chan;
+    ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels
+    uint8_t ares_channel_id; // ID of last-used c-ares channel
 
     /*
      * Hashmap for storing the IP version used in every template by template ID. We
@@ -124,7 +130,8 @@ struct proxy_processor {
     uint32_t length, odid;
     int type;
 
-    ares_channel *ares_chan; // Channel used for domain name resolutions
+    ares_channel *ares_channels; // Channel used for domain name resolutions
+    uint8_t *ares_channel_id;
     
     struct proxy_config *plugin_conf; // Pointer to proxy_config, such that we don't have to store some pointers twice
     struct ipfix_template_key *key; // Stores the key of a newly added template within the template manager
