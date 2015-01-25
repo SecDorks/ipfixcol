@@ -161,12 +161,27 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
         return;
     }
 
+    int failed_resolution = 0;
+
     /*
      * There are cases in which domain name resolution is done for type 'AAAA', while there
      * exists no AAAA record for that domain. In those cases, 'hostent->h_addr_list[0] == NULL'.
      */
-    if (status != ARES_SUCCESS || hostent == NULL || hostent->h_addr_list[0] == NULL) {
+    if (status == ARES_SUCCESS && hostent->h_addr_list[0] == NULL) {
+        if (hostent->h_addrtype == AF_INET) {
+            MSG_WARNING(msg_module, "DNS server returned OK, but no A records available for '%s'", ares_proc->http_hostname);
+        } else {
+            MSG_WARNING(msg_module, "DNS server returned OK, but no AAAA records available for '%s'", ares_proc->http_hostname);
+        }
+
+        failed_resolution = 1;
+    } else if (status != ARES_SUCCESS) {
         MSG_WARNING(msg_module, "Failed domain name resolution for '%s': %s", ares_proc->http_hostname, ares_strerror(status));
+        failed_resolution = 1;
+    }
+
+    if (failed_resolution) {
+        ++ares_proc->proc->plugin_conf->failed_resolutions;
 
         // Copy original data record
         memcpy(ares_proc->proc->msg + ares_proc->proc->offset, ares_proc->orig_rec, ares_proc->orig_rec_len);
@@ -800,6 +815,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->stat_interval = DEFAULT_STAT_INTERVAL;
     conf->records_resolution = 0;
     conf->records_wo_resolution = 0;
+    conf->failed_resolutions = 0;
 
     // Parse XML configuration: prelude
     doc = xmlReadMemory(params, strlen(params), "nobase.xml", NULL, 0);

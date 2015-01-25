@@ -103,6 +103,7 @@ struct proxy_config {
     uint16_t stat_interval;
     uint64_t records_resolution;
     uint64_t records_wo_resolution;
+    uint64_t failed_resolutions;
 
     // Variables for use by c-ares
     ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels
