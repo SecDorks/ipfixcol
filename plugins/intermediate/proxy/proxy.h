@@ -65,7 +65,7 @@
 #ifndef PROXY_H_
 #define PROXY_H_
 
-#define MAX_ARES_CHANNELS 10
+#define ARES_CHANNELS 10
 
 #include <ares.h>
 #include <netdb.h>
@@ -101,7 +101,7 @@ struct proxy_config {
     uint8_t stat_done;
 
     // Variables for use by c-ares
-    ares_channel ares_channels[MAX_ARES_CHANNELS]; // Stores all c-ares channels
+    ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels
     uint8_t ares_channel_id; // ID of last-used c-ares channel
 
     /*

@@ -306,7 +306,7 @@ static void ares_wait (ares_channel channel) {
  */
 void ares_destroy_all_channels (ares_channel *pool) {
     unsigned int i;
-    for (i = 0; i < MAX_ARES_CHANNELS; ++i) {
+    for (i = 0; i < ARES_CHANNELS; ++i) {
         ares_destroy(pool[i]);
     }
 }
@@ -318,7 +318,7 @@ void ares_destroy_all_channels (ares_channel *pool) {
  */
 void ares_wait_all_channels (ares_channel *pool) {
     unsigned int i;
-    for (i = 0; i < MAX_ARES_CHANNELS; ++i) {
+    for (i = 0; i < ARES_CHANNELS; ++i) {
         ares_wait(pool[i]);
     }
 }
@@ -751,7 +751,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     strncpy_safe(ares_proc->http_hostname, http_hostname, strlen(http_hostname) + 1);
 
     // Perform asynchronous domain name resolution
-    *proc->ares_channel_id = (*proc->ares_channel_id + 1) % MAX_ARES_CHANNELS;
+    *proc->ares_channel_id = (*proc->ares_channel_id + 1) % ARES_CHANNELS;
     if (templ_stats->ipv4) {
         ares_gethostbyname(proc->ares_channels[*proc->ares_channel_id], http_hostname, AF_INET, ares_cb, ares_proc);
     } else {
@@ -909,7 +909,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     ares_opts.timeout = 1;
     ares_opts.tries = 1;
     int ares_status = 0;
-    for (i = 0; i < MAX_ARES_CHANNELS; ++i) {
+    for (i = 0; i < ARES_CHANNELS; ++i) {
         ares_status = ares_init_options(&conf->ares_channels[i], &ares_opts,
                 (ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES)
         );
