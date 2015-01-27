@@ -412,7 +412,14 @@ int intermediate_process_message (void *config, void *message) {
     /*
      * Allocate memory for new message
      */
-    int new_msg_length = ntohs(msg->pkt_header->length);
+    uint16_t new_msg_length = ntohs(msg->pkt_header->length);
+    if (new_msg_length <= 0) {
+        MSG_WARNING(msg_module,
+                "Unexpected IPFIX message length detected (%u); skipping IPFIX message...", new_msg_length);
+        pass_message(conf->ip_config, msg);
+        return 0;
+    }
+
     proc.msg = calloc(1, new_msg_length);
     if (!proc.msg) {
         MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
