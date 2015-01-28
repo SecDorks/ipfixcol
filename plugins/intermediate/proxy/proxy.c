@@ -1029,7 +1029,7 @@ int intermediate_process_message (void *config, void *message) {
      * Allocate memory for new message (every record is 4 bytes in size). We allocate enough memory
      * here for both IPv4 and IPv6 fields (see '* 2' in statement below).
      */
-    int new_msg_length = ntohs(msg->pkt_header->length)
+    uint16_t new_msg_length = ntohs(msg->pkt_header->length)
             + orig_fields_count * 2 * 4 * (msg->templ_records_count + msg->opt_templ_records_count)
             + msg->data_records_count * 12  // IPv4 orig fields (2 + 4 + 2 + 4)
             + msg->data_records_count * 36; // IPv6 orig fields (2 + 16 + 2 + 16)
