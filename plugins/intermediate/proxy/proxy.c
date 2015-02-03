@@ -82,7 +82,7 @@ static char *msg_module = "proxy";
  * \return 1 on success, 0 otherwise
  */
 static int is_port_number_field (uint16_t id) {
-    unsigned int i;
+    uint8_t i;
     for (i = 0; i < port_number_fields_count; ++i) {
         if (id == port_number_fields[i].element_id) {
             return 1;
@@ -100,7 +100,7 @@ static int is_port_number_field (uint16_t id) {
  * \return 1 on success, 0 otherwise
  */
 static int is_source_field (uint16_t id) {
-    unsigned int i;
+    uint8_t i;
     for (i = 0; i < source_fields_count; ++i) {
         if (id == source_fields[i].element_id) {
             return 1;
@@ -117,7 +117,7 @@ static int is_source_field (uint16_t id) {
  * \param[in] pen IANA Private Enterprise Number
  * \return Field reference if supplied PEN is known, NULL otherwise
  */
-static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
+static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
     struct ipfix_entity *fields = NULL;
     switch (pen) {
         case 35632:     fields = (struct ipfix_entity *) ntop_fields;
@@ -147,8 +147,8 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
 static void ares_cb (void *arg, int status, int timeouts, struct hostent *hostent) {
     struct proxy_ares_processor *ares_proc = (struct proxy_ares_processor *) arg;
     char *ip_addr;
-    uint8_t offset;
-    unsigned int element_id, template_id, length, i;
+    uint8_t i, offset;
+    uint16_t element_id, template_id, length;
 
     // Determine IP versions used within this template
     template_id = ares_proc->templ->template_id;
@@ -320,7 +320,7 @@ static void ares_wait (ares_channel channel) {
  * \param[in] pool c-ares name service pool (ares_channel[])
  */
 void ares_destroy_all_channels (ares_channel *pool) {
-    unsigned int i;
+    uint8_t i;
     for (i = 0; i < ARES_CHANNELS; ++i) {
         ares_destroy(pool[i]);
     }
@@ -332,7 +332,7 @@ void ares_destroy_all_channels (ares_channel *pool) {
  * \param[in] pool c-ares name service pool (ares_channel[])
  */
 void ares_wait_all_channels (ares_channel *pool) {
-    unsigned int i;
+    uint8_t i;
     for (i = 0; i < ARES_CHANNELS; ++i) {
         ares_wait(pool[i]);
     }
@@ -418,10 +418,11 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
     struct ipfix_template_record *new_rec;
     struct ipfix_template *new_templ;
+
+    uint8_t i;
     uint16_t new_rec_len;
     uint16_t element_id, element_length;
     uint32_t pen;
-    unsigned int i;
 
     // Get structure from hashmap that provides information about current template
     struct templ_stats_elem_t *templ_stats;
@@ -573,9 +574,10 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
  */
 void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
-    uint16_t *msg_data;
+
+    uint8_t i, j;
     uint8_t *p;
-    unsigned int i, j;
+    uint16_t *msg_data;
     int ret;
 
     // Get structure from hashmap that provides information about current template
@@ -806,7 +808,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     xmlDocPtr doc;
     xmlNodePtr config_root;
     xmlNodePtr node;
-    unsigned int i;
+    uint8_t i;
 
     conf = (struct proxy_config *) malloc(sizeof(*conf));
     if (!conf) {
@@ -960,7 +962,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             MSG_ERROR(msg_module, "Unable to initialize c-ares (channel ID: %u)", i);
 
             // Destroying all previously initialized channels
-            unsigned int j;
+            uint8_t j;
             for (j = 0; j < i; ++j) {
                 ares_destroy(conf->ares_channels[j]);
             }
@@ -1005,9 +1007,8 @@ int intermediate_process_message (void *config, void *message) {
     struct ipfix_message *msg, *new_msg;
     struct ipfix_template *templ, *new_templ;
     struct input_info_network *info;
-    uint16_t prev_offset;
+    uint16_t i, new_i, prev_offset;
     uint32_t tsets = 0, otsets = 0;
-    unsigned int i, new_i;
 
     conf = (struct proxy_config *) config;
     msg = (struct ipfix_message *) message;

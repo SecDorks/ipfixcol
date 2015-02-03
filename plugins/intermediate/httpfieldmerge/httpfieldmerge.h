@@ -79,7 +79,7 @@
 #define rsHttpUrl       { 44913,  21, 64,  "rsHttpUrl" }
 
 struct ipfix_entity {
-    uint16_t pen;
+    uint32_t pen;
     uint16_t element_id;
     uint16_t length;
     char *entity_name;

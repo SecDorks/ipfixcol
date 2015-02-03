@@ -73,7 +73,7 @@ static char *msg_module = "httpfieldmerge";
  * \param[in] pen IANA Private Enterprise Number
  * \return Field reference if supplied PEN is known, NULL otherwise
  */
-static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
+static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
     struct ipfix_entity *fields = NULL;
     switch (pen) {
         case 35632:     fields = (struct ipfix_entity *) ntop_fields;
@@ -98,7 +98,7 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint16_t pen) {
  * \param[in] pen IANA Private Enterprise Number
  * \return Field mappings reference if supplied PEN is known, NULL otherwise
  */
-static struct field_mapping* pen_to_field_mappings (uint16_t pen) {
+static struct field_mapping* pen_to_field_mappings (uint32_t pen) {
     struct field_mapping *mapping = NULL;
     switch (pen) {
         case 35632:     mapping = (struct field_mapping *) ntop_field_mappings;
@@ -126,7 +126,7 @@ static struct field_mapping* pen_to_field_mappings (uint16_t pen) {
  *      supplied mapping, NULL otherwise
  */
 static struct ipfix_entity* field_to_mapping_target (struct field_mapping* mapping, struct ipfix_entity* source_field) {
-    unsigned int i;
+    uint8_t i;
     for (i = 0; i < vendor_fields_count; ++i) {
         if (mapping[i].from.element_id == source_field->element_id) {
             return &mapping[i].to;
@@ -213,7 +213,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
     struct ipfix_template_record *new_rec;
     struct ipfix_template *new_templ;
-    unsigned int i;
+    uint8_t i;
 
     // Get structure from hashmap that provides information about current template
     struct templ_stats_elem_t *templ_stats;
@@ -252,7 +252,8 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct ipfix_entity *target_field;
     for (i = 0; i < vendor_fields_count; ++i) {
         // Iterate over all fields in template record
-        unsigned int count = 0, index = 0, field_modified = 0;
+        uint8_t field_modified = 0;
+        uint16_t count = 0, index = 0;
         while (count < ntohs(new_rec->count)
                 && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
             // Apply field mapping if enterprise-specific fields have been found
@@ -391,7 +392,7 @@ int intermediate_process_message (void *config, void *message) {
     struct input_info_network *info;
     uint16_t prev_offset;
     uint32_t tsets = 0, otsets = 0;
-    unsigned int i, new_i;
+    uint16_t i, new_i;
 
     conf = (struct httpfieldmerge_config *) config;
     msg = (struct ipfix_message *) message;

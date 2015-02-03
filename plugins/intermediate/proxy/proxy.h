@@ -75,19 +75,19 @@
 #include "uthash.h"
 
 struct ipfix_entity {
-    uint16_t pen;
+    uint32_t pen;
     uint16_t element_id;
     uint16_t length;
     char *entity_name;
 };
 
 struct templ_stats_elem_t {
-    int id;                         // Hash key
-    uint32_t http_fields_pen;       // Exporter PEN in case template contains HTTP-related fields
-    int http_fields_pen_determined; // Indicates whether the PEN belonging HTTP-related has been determined before
-    int ipv4;                       // Indicates whether template contains IPv4 address fields
-    int ipv6;                       // Indicates whether template contains IPv6 address fields
-    UT_hash_handle hh;              // Hash handle for internal hash functioning
+    int id;                             // Hash key
+    uint32_t http_fields_pen;           // Exporter PEN in case template contains HTTP-related fields
+    uint8_t http_fields_pen_determined; // Indicates whether the PEN belonging HTTP-related has been determined before
+    uint8_t ipv4;                       // Indicates whether template contains IPv4 address fields
+    uint8_t ipv6;                       // Indicates whether template contains IPv6 address fields
+    UT_hash_handle hh;                  // Hash handle for internal hash functioning
 };
 
 // Stores plugin's internal configuration
