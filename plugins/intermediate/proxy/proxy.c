@@ -372,7 +372,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         // Check enterprise-specific IEs from INVEA-TECH
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
-                MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", template_id);
+                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from INVEA-TECH in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = invea_fields[i].pen;
             }
         }
@@ -380,7 +380,16 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         // Check enterprise-specific IEs from ntop
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
-                MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", template_id);
+                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from ntop in template (template ID: %u)", template_id);
+                templ_stats->http_fields_pen = ntop_fields[i].pen;
+            }
+        }
+
+        // Check enterprise-specific IEs from ntop (converted from NetFlow v9)
+        // https://github.com/CESNET/ipfixcol/issues/16
+        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+            if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntop_fields[i].element_id, NULL) != NULL) {
+                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
             }
         }
@@ -388,7 +397,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         // Check enterprise-specific IEs from RS
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
-                MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", template_id);
+                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from RS in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = rs_fields[i].pen;
             }
         }

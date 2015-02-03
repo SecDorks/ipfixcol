@@ -64,6 +64,7 @@
 
 #include "uthash.h"
 
+#define NFV9_CONVERSION_PEN 0xFFFFFFFF
 #define TEMPL_MAX_LEN 100000
 #define TARGET_FIELD_PEN 44913
 

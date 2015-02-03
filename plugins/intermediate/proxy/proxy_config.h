@@ -69,6 +69,7 @@
 
 #define DEFAULT_STAT_INTERVAL 20
 #define HTTP_FIELD_WORKING_SIZE 65
+#define NFV9_CONVERSION_PEN 0xFFFFFFFF
 #define TEMPL_MAX_LEN 100000
 
 // IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)
