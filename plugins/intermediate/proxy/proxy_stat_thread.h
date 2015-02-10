@@ -67,19 +67,24 @@
 
 #include <stdbool.h>
 
-// This structure is copied from intermediate_process.c
-struct ip_config {
+// This structure is copied from config.h(.in)
+struct intermediate {
     struct ring_buffer *in_queue;
     struct ring_buffer *out_queue;
-    char *xmldata;
+    struct ring_buffer *new_in;
+    void *plugin_config;        /**< config structure of intermediate process */
+    void *config;           /**< intermediate plugin's config structure */
     int (*intermediate_init)(char *, void *, uint32_t, struct ipfix_template_mgr *, void **);
     int (*intermediate_process_message)(void *, void *);
     int (*intermediate_close)(void *);
-    void *plugin_config;
+    void *dll_handler;
+    struct plugin_xml_conf *xml_conf;
     pthread_t thread_id;
-    char thread_name[16];
-    unsigned int index;
+    int index;
     bool dropped;
+    char thread_name[16];   /**< Name for storage threads (from configuration) */
+    pthread_mutex_t in_q_mutex;
+    pthread_cond_t  in_q_cond;
 };
 
 void *stat_thread (void* config);

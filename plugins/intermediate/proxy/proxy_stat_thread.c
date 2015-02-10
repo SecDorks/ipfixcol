@@ -85,7 +85,7 @@ void sig_handler (int s) {
 }
 
 /**
- *  \brief Main routine of statistics thread
+ * \brief Main routine of statistics thread
  *
  * \param[in] config configuration structure for thread
  * \return NULL once thread shutdown is signaled by proxy plugin
@@ -107,7 +107,7 @@ void *stat_thread (void* config) {
             break;
         }
 
-        struct ip_config *ip_conf = (struct ip_config *) conf->ip_config;
+        struct intermediate *ip_conf = (struct intermediate *) conf->ip_config;
 
         MSG_INFO(msg_module, "-----");
         MSG_INFO(msg_module, "Messages in input queue: %u; messages in output queue: %u", ip_conf->in_queue->count, ip_conf->out_queue->count);
