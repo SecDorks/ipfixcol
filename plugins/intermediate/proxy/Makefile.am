@@ -10,7 +10,7 @@ plugins_LTLIBRARIES = ipfixcol-proxy-inter.la
 ipfixcol_proxy_inter_la_LDFLAGS = -module -avoid-version -shared
 ipfixcol_proxy_inter_la_LIBADD = -lrt
 
-ipfixcol_proxy_inter_la_SOURCES = proxy.h proxy_config.h proxy_stat_thread.h uthash.h proxy_stat_thread.c proxy.c
+ipfixcol_proxy_inter_la_SOURCES = ares_util.c proxy_stat_thread.c proxy.c
 
 clean-local:
 	rm -rf RPMBUILD

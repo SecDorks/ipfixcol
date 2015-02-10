@@ -1,5 +1,5 @@
 /*
- * \file proxy.h
+ * \file ares_util.h
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'proxy' intermediate plugin.
  *
@@ -62,95 +62,18 @@
  *
  */
 
-#ifndef PROXY_H_
-#define PROXY_H_
-
-#define ARES_CHANNELS 20
+#ifndef ARES_UTIL_H_
+#define ARES_UTIL_H_
 
 #include <ares.h>
-#include <netdb.h>
-#include <ipfixcol.h>
-#include <libxml/parser.h>
+#include <stdlib.h>
 
-#include "ares_util.h"
-#include "uthash.h"
+#include "ipfixcol.h"
 
-struct ipfix_entity {
-    uint32_t pen;
-    uint16_t element_id;
-    uint16_t length;
-    char *entity_name;
-};
+void ares_add_name_server (struct ares_addr_node **head, struct ares_addr_node *node);
+void ares_destroy_all_channels (ares_channel *pool);
+void ares_destroy_name_server_list (struct ares_addr_node *head);
+void ares_wait (ares_channel channel);
+void ares_wait_all_channels (ares_channel *pool);
 
-struct templ_stats_elem_t {
-    int id;                             // Hash key
-    uint32_t http_fields_pen;           // Exporter PEN in case template contains HTTP-related fields
-    uint8_t http_fields_pen_determined; // Indicates whether the PEN belonging HTTP-related has been determined before
-    uint8_t ipv4;                       // Indicates whether template contains IPv4 address fields
-    uint8_t ipv6;                       // Indicates whether template contains IPv6 address fields
-    UT_hash_handle hh;                  // Hash handle for internal hash functioning
-};
-
-// Stores plugin's internal configuration
-struct proxy_config {
-    char *params;
-    void *ip_config;
-    uint32_t ip_id;
-    struct ipfix_template_mgr *tm;
-
-    // Variables for use by statistics thread
-    pthread_t stat_thread;
-    uint8_t stat_done;
-    uint16_t stat_interval;
-    uint64_t records_resolution;
-    uint64_t records_wo_resolution;
-    uint64_t failed_resolutions;
-
-    // Variables for use by c-ares
-    ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels
-    uint8_t ares_channel_id; // ID of last-used c-ares channel
-    struct ares_addr_node *name_servers; // Name servers for resolution, if specified explicitly
-
-    /*
-     * Hashmap for storing the IP version used in every template by template ID. We
-     * place this structure in proxy_config rather than proxy_processor, since
-     * it should be persistent between various IPFIX messages (and proxy processor
-     * is reset for every IPFIX message).
-     */
-    struct templ_stats_elem_t *templ_stats;
-
-    /*
-     * Will contain the proxy ports used by this plugin, either the default ports,
-     * or the ports specified in the plugin's XML configuration.
-     */
-    unsigned int proxy_port_count;
-    int *proxy_ports;
-};
-
-struct proxy_processor {
-    uint8_t *msg;
-    uint16_t offset;
-    uint32_t length, odid;
-    int type;
-
-    ares_channel *ares_channels; // Channel used for domain name resolutions
-    uint8_t *ares_channel_id;
-    
-    struct proxy_config *plugin_conf; // Pointer to proxy_config, such that we don't have to store some pointers twice
-    struct ipfix_template_key *key; // Stores the key of a newly added template within the template manager
-};
-
-struct proxy_ares_processor {
-    struct proxy_processor *proc;
-    struct ipfix_template *templ;
-
-    uint8_t *orig_rec;
-    int orig_rec_len;
-
-    char *http_hostname;
-    int port_number;
-
-    int proxy_port_field_id;
-};
-
-#endif /* PROXY_H_ */
+#endif /* ARES_UTIL_H_ */

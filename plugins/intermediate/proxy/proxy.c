@@ -137,40 +137,6 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
 }
 
 /**
- * \brief Adds a name server to the list of specified name servers.
- *
- * \param[in] head Head of the name server list
- * \param[in] node Name server to be added to the list
- */
-static void ares_add_name_server (struct ares_addr_node **head, struct ares_addr_node *node) {
-    struct ares_addr_node *last;
-    node->next = NULL;
-    if (*head) {
-        last = *head;
-        while (last->next) {
-            last = last->next;
-        }
-        last->next = node;
-    } else {
-        *head = node;
-    }
-}
-
-/**
- * \brief Destroys the specified list of name servers.
- *
- * \param[in] head Head of the name server list
- */
-static void ares_destroy_name_server_list (struct ares_addr_node *head) {
-    struct ares_addr_node *detached;
-    while (head) {
-        detached = head;
-        head = head->next;
-        free(detached);
-    }
-}
-
-/**
  * \brief c-ares callback function, called once a domain name resolution has completed.
  *
  * \param[in] arg Any-type argument supplied to ares_gethostbyname (here: proxy_ares_processor)
@@ -318,59 +284,6 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
 
     free(ares_proc->http_hostname);
     free(ares_proc);
-}
-
-/**
- * \brief Waits for all domain name resolutions to be ready.
- *
- * \param[in] channel c-ares name service channel
- */
-static void ares_wait (ares_channel channel) {
-    for (;;) {
-        struct timeval *tvp, tv;
-        fd_set read_fds, write_fds;
-        int nfds;
- 
-        FD_ZERO(&read_fds);
-        FD_ZERO(&write_fds);
-        nfds = ares_fds(channel, &read_fds, &write_fds);
-
-        if (nfds == 0) {
-            break;
-        }
-
-        tvp = ares_timeout(channel, NULL, &tv);
-
-        if (select(nfds, &read_fds, &write_fds, NULL, tvp) == -1) {
-            MSG_ERROR(msg_module, "An error occurred while calling select()");
-        }
-
-        ares_process(channel, &read_fds, &write_fds);
-    }
-}
-
-/**
- * \brief Destroys all c-ares name service channels in the provided pool.
- *
- * \param[in] pool c-ares name service pool (ares_channel[])
- */
-void ares_destroy_all_channels (ares_channel *pool) {
-    uint8_t i;
-    for (i = 0; i < ARES_CHANNELS; ++i) {
-        ares_destroy(pool[i]);
-    }
-}
-
-/**
- * \brief Waits for all c-ares name service channels to be ready.
- *
- * \param[in] pool c-ares name service pool (ares_channel[])
- */
-void ares_wait_all_channels (ares_channel *pool) {
-    uint8_t i;
-    for (i = 0; i < ARES_CHANNELS; ++i) {
-        ares_wait(pool[i]);
-    }
 }
 
 /**
