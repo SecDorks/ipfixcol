@@ -108,6 +108,7 @@ struct proxy_config {
     // Variables for use by c-ares
     ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels
     uint8_t ares_channel_id; // ID of last-used c-ares channel
+    struct ares_addr_node *name_servers; // Name servers for resolution, if specified explicitly
 
     /*
      * Hashmap for storing the IP version used in every template by template ID. We

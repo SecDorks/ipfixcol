@@ -71,13 +71,15 @@ Example:
 <intermediatePlugins>
     <proxy>
         <!-- List of proxy ports. Zero or more 'proxyPort' nodes can be specified -->
-        <proxyPort>80</proxyPort>
-        <proxyPort>443</proxyPort>
         <proxyPort>3128</proxyPort>
         <proxyPort>8080</proxyPort>
 
         <!-- Interval (in seconds) in which plugins statistics are calculated and shown -->
         <statInterval>10</statInterval>
+
+        <!-- Name servers, for overriding system-wide name servers specified in /etc/resolv.conf -->
+        <!-- <nameServer>8.8.8.8</nameServer> -->
+        <!-- <nameServer>8.8.4.4</nameServer> -->
     </proxy>
 </intermediatePlugins>
 ```

@@ -137,6 +137,40 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
 }
 
 /**
+ * \brief Adds a name server to the list of specified name servers.
+ *
+ * \param[in] head Head of the name server list
+ * \param[in] node Name server to be added to the list
+ */
+static void ares_add_name_server (struct ares_addr_node **head, struct ares_addr_node *node) {
+    struct ares_addr_node *last;
+    node->next = NULL;
+    if (*head) {
+        last = *head;
+        while (last->next) {
+            last = last->next;
+        }
+        last->next = node;
+    } else {
+        *head = node;
+    }
+}
+
+/**
+ * \brief Destroys the specified list of name servers.
+ *
+ * \param[in] head Head of the name server list
+ */
+static void ares_destroy_name_server_list (struct ares_addr_node *head) {
+    struct ares_addr_node *detached;
+    while (head) {
+        detached = head;
+        head = head->next;
+        free(detached);
+    }
+}
+
+/**
  * \brief c-ares callback function, called once a domain name resolution has completed.
  *
  * \param[in] arg Any-type argument supplied to ares_gethostbyname (here: proxy_ares_processor)
@@ -301,7 +335,7 @@ static void ares_wait (ares_channel channel) {
         FD_ZERO(&write_fds);
         nfds = ares_fds(channel, &read_fds, &write_fds);
 
-        if (nfds == 0){
+        if (nfds == 0) {
             break;
         }
 
@@ -310,6 +344,7 @@ static void ares_wait (ares_channel channel) {
         if (select(nfds, &read_fds, &write_fds, NULL, tvp) == -1) {
             MSG_ERROR(msg_module, "An error occurred while calling select()");
         }
+
         ares_process(channel, &read_fds, &write_fds);
     }
 }
@@ -828,6 +863,9 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->records_wo_resolution = 0;
     conf->failed_resolutions = 0;
 
+    conf->ares_channel_id = 0;
+    conf->name_servers = NULL;
+
     // Parse XML configuration: prelude
     doc = xmlReadMemory(params, strlen(params), "nobase.xml", NULL, 0);
     if (doc == NULL) {
@@ -867,6 +905,61 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
                 }
 
                 xmlFree(proxy_port_str);
+            } else if (xmlStrcmp(node->name, (const xmlChar *) "nameServer") == 0) {
+                char *name_server_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+
+                // Only consider this node if its value is non-empty and features at least one dot
+                if (strlen(name_server_str) > 0 && strstr(name_server_str, ".") != NULL) {
+                    struct ares_addr_node *ns = malloc(sizeof(struct ares_addr_node));
+                    if (!ns) {
+                        MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
+                        ares_destroy_name_server_list(conf->name_servers);
+                        xmlFree(name_server_str);
+                        xmlFreeDoc(doc);
+                        xmlCleanupParser();
+                        free(conf);
+                        return 1;
+                    }
+
+                    ares_add_name_server(&conf->name_servers, ns);
+
+                    /*
+                     * Check whether specified name server is an IP address. In case of a hostname, it
+                     * has to be resolved.
+                     */
+                    if (ares_inet_pton(AF_INET, name_server_str, &ns->addr.addr4) > 0) {
+                        ns->family = AF_INET;
+                    } else if (ares_inet_pton(AF_INET6, name_server_str, &ns->addr.addr6) > 0) {
+                        ns->family = AF_INET6;
+                    } else {
+                        struct hostent *hostent = gethostbyname(name_server_str);
+                        if (!hostent) {
+                            MSG_WARNING(msg_module, "Could not resolve the name server '%s'; skipping specification...", name_server_str);
+                            ares_destroy_name_server_list(conf->name_servers);
+                            xmlFree(name_server_str);
+                            xmlFreeDoc(doc);
+                            xmlCleanupParser();
+                            free(conf);
+                            return 1;
+                        }
+
+                        switch (hostent->h_addrtype) {
+                            case AF_INET:   ns->family = AF_INET;
+                                            memcpy(&ns->addr.addr4, hostent->h_addr, sizeof(ns->addr.addr4));
+                                            break;
+                            case AF_INET6:  ns->family = AF_INET6;
+                                            memcpy(&ns->addr.addr6, hostent->h_addr, sizeof(ns->addr.addr6));
+                                            break;
+                            default:        break;
+                        }
+                    }
+
+                    ns->next = NULL;
+
+                    // FIXME Check free(hostent);
+                }
+
+                xmlFree(name_server_str);
             } else if (xmlStrcmp(node->name, (const xmlChar *) "statInterval") == 0) {
                 char *stat_interval_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 
@@ -922,18 +1015,43 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
      * more than 5 digits.
      */
     char proxy_port_str[(conf->proxy_port_count * 5) + ((conf->proxy_port_count - 1) * 2) + 1];
-    char buffer[5 + 1]; // Port numbers can feature at most 5 digits, +1 null-terminating character
+    char buf[5 + 1] = ""; // Port numbers can feature at most 5 digits, +1 null-terminating character
     for (i = 0; i < conf->proxy_port_count; ++i) {
-        sprintf(buffer, "%d", conf->proxy_ports[i]); 
+        sprintf(buf, "%d", conf->proxy_ports[i]);
         if (i == 0) {
-            strncpy_safe(proxy_port_str, buffer, 5 + 1); // Port numbers can feature at most 5 digits, +1 null-terminating character
+            strncpy_safe(proxy_port_str, buf, 5 + 1); // Port numbers can feature at most 5 digits, +1 null-terminating character
         } else {
             strcat(proxy_port_str, ", ");
-            strcat(proxy_port_str, buffer);
+            strcat(proxy_port_str, buf);
         }
     }
 
     MSG_NOTICE(msg_module, "Proxy port(s): %s", proxy_port_str);
+
+    // Print name servers in case they have been specified explicitly
+    if (conf->name_servers) {
+        struct ares_addr_node *ns = conf->name_servers;
+        char ns_str[256] = "";
+        char ntop_buf[INET6_ADDRSTRLEN];
+        while (ns) {
+            if (ns->family == AF_INET) {
+                inet_ntop(AF_INET, &(ns->addr.addr4), ntop_buf, sizeof(ntop_buf));
+            } else {
+                inet_ntop(AF_INET6, &(ns->addr.addr6), ntop_buf, sizeof(ntop_buf));
+            }
+
+            if (strlen(ns_str) == 0) {
+                strncpy_safe(ns_str, ntop_buf, strlen(ntop_buf) + 1); // +1 null-terminating character
+            } else {
+                strcat(ns_str, ", ");
+                strcat(ns_str, ntop_buf);
+            }
+
+            ns = ns->next;
+        }
+
+        MSG_NOTICE(msg_module, "Name server(s): %s", ns_str);
+    }
 
     // Initialize statistics thread
     if (conf->stat_interval > 0) {
@@ -950,13 +1068,20 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
     // Initialize c-ares
     struct ares_options ares_opts;
+    memset(&ares_opts, 0, sizeof(ares_opts));
     ares_opts.timeout = 1;
     ares_opts.tries = 1;
     int ares_status = 0;
     for (i = 0; i < ARES_CHANNELS; ++i) {
-        ares_status = ares_init_options(&conf->ares_channels[i], &ares_opts,
-                (ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES)
-        );
+        int ares_optmask = ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES;
+
+        // Set flag in case name servers have been specified
+        if (conf->name_servers) {
+            ares_optmask |= ARES_OPT_SERVERS;
+        }
+
+        conf->ares_channels[i] = NULL;
+        ares_status = ares_init_options(&conf->ares_channels[i], &ares_opts, ares_optmask);
 
         if (ares_status != ARES_SUCCESS) {
             MSG_ERROR(msg_module, "Unable to initialize c-ares (channel ID: %u)", i);
@@ -976,9 +1101,21 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             free(conf);
             return -1;
         }
+
+        // Set name servers in case they have been specified explicitly
+        if (conf->name_servers) {
+            ares_status = ares_set_servers(conf->ares_channels[i], conf->name_servers);
+
+            if (ares_status != ARES_SUCCESS) {
+                MSG_ERROR(msg_module, "Unable to set name servers for c-ares channel (channel ID: %u)", i);
+            }
+        }
     }
 
-    conf->ares_channel_id = 0;
+    // Clean up name server list
+    if (conf->name_servers) {
+        ares_destroy_name_server_list(conf->name_servers);
+    }
 
     // Initialize (empty) hashmap
     conf->templ_stats = NULL;
