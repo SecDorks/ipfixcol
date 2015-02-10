@@ -1037,11 +1037,11 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             if (ns->family == AF_INET) {
                 inet_ntop(AF_INET, &(ns->addr.addr4), ntop_buf, sizeof(ntop_buf));
             } else {
-                inet_ntop(AF_INET, &(ns->addr.addr6), ntop_buf, sizeof(ntop_buf));
+                inet_ntop(AF_INET6, &(ns->addr.addr6), ntop_buf, sizeof(ntop_buf));
             }
 
             if (strlen(ns_str) == 0) {
-                strncpy_safe(ns_str, ntop_buf, strlen(ntop_buf));
+                strncpy_safe(ns_str, ntop_buf, strlen(ntop_buf) + 1); // +1 null-terminating character
             } else {
                 strcat(ns_str, ", ");
                 strcat(ns_str, ntop_buf);
