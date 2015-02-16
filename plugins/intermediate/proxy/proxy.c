@@ -968,7 +968,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
     // Initialize statistics thread
     if (conf->stat_interval > 0) {
-        MSG_NOTICE(msg_module, "Statistics thread execution interval: %us", conf->stat_interval);
+        MSG_NOTICE(msg_module, "Statistics thread execution interval: %u sec.", conf->stat_interval);
 
         if (pthread_create(&(conf->stat_thread), NULL, &stat_thread, (void *) conf) != 0) {
             MSG_ERROR(msg_module, "Unable to create statistics thread");

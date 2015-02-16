@@ -80,8 +80,8 @@ static char *msg_module = "proxy_stat_thread";
 /**
  * \brief Dummy SIGUSR1 signal handler
  */
-void sig_handler (int s) {
-    (void) s;
+void term_signal_handler (int sig) {
+    (void) sig;
 }
 
 /**
@@ -92,9 +92,13 @@ void sig_handler (int s) {
  */
 void *stat_thread (void* config) {
     struct proxy_config *conf = (struct proxy_config *) config;
+    struct sigaction action;
 
     // Catch SIGUSR1
-    signal(SIGUSR1, sig_handler);
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+    action.sa_handler = term_signal_handler;
+    sigaction(SIGUSR1, &action, NULL);
 
     // Set thread name
     prctl(PR_SET_NAME, "med:proxy:stats", 0, 0, 0);
