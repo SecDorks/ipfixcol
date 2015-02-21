@@ -111,10 +111,7 @@ void *stat_thread (void* config) {
             break;
         }
 
-        struct intermediate *ip_conf = (struct intermediate *) conf->ip_config;
-
         MSG_INFO(msg_module, "");
-        MSG_INFO(msg_module, "Messages in input queue: %u; messages in output queue: %u", ip_conf->in_queue->count, ip_conf->out_queue->count);
         MSG_INFO(msg_module, "Records with domain resolution: %u; records without domain resolution: %u", conf->records_resolution, conf->records_wo_resolution);
         MSG_INFO(msg_module, "Failed resolutions: %u", conf->failed_resolutions);
         MSG_INFO(msg_module, "");
