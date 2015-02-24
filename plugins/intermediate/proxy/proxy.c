@@ -661,13 +661,15 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     /*
      * Skip further processing if...
+     *      - IPFIXcol is supposed to terminate
      *      - Hostname information is not available
      *      - Hostname can never be a valid FQDN (i.e., does not contain a dot (.))
      *      - Hostname has the maximum field length, so we assume it is truncated and thus invalid
      *      - Hostname is merely a path (i.e., starts with a slash (/))
      *      - Hostname is malformed due to fixed length of 32 bytes (we often see a dot (.) as the first char)
      */
-    if (analyze_hostname == 0
+    if (terminating
+            || analyze_hostname == 0
             || strstr(http_hostname, ".") == NULL
             || strlen(http_hostname) == http_fields[0].length
             || http_hostname[0] == '/'
