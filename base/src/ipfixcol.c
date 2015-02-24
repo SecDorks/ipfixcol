@@ -85,8 +85,8 @@ const char *ipfix_elements = DEFAULT_IPFIX_ELEMENTS;
 /* Template Manager */
 struct ipfix_template_mgr *template_mgr = NULL;
 
-/* main loop indicator */
-volatile int done = 0;
+/* terminating indicator */
+volatile int terminating = 0;
 
 /* reconfiguration indicator */
 volatile int reconf = 0;
@@ -116,9 +116,9 @@ void version ()
 void help ()
 {
 	printf ("Usage: %s [-c file] [-i file] [-dhVs] [-v level]\n", PACKAGE);
-	printf ("  -c file   Path to configuration file (%s by default)\n", DEFAULT_CONFIG_FILE);
-	printf ("  -i file   Path to internal configuration file (%s by default)\n", INTERNAL_CONFIG_FILE);
-	printf ("  -e file   Path to ipfix-elements.xml file (%s by default)\n", DEFAULT_IPFIX_ELEMENTS);
+	printf ("  -c file   Path to configuration file (default: %s)\n", DEFAULT_CONFIG_FILE);
+	printf ("  -i file   Path to internal configuration file (default: %s)\n", INTERNAL_CONFIG_FILE);
+	printf ("  -e file   Path to IPFIX IE specification file (default: %s)\n", DEFAULT_IPFIX_ELEMENTS);
 	printf ("  -d        Daemonize\n");
 	printf ("  -h        Print this help\n");
 	printf ("  -v level  Print verbose messages up to specified level\n");
@@ -139,12 +139,12 @@ void term_signal_handler(int sig)
 	}
 	
 	/* Terminating signal */
-	if (done) {
+	if (terminating) {
 		MSG_COMMON(ICMSG_ERROR, "Another termination signal (%i) detected - quiting without cleanup.", sig);
 		exit (EXIT_FAILURE);
 	} else {
 		MSG_COMMON(ICMSG_ERROR, "Signal: %i detected, will exit as soon as possible", sig);
-		done = 1;
+		terminating = 1;
 	}
 }
 
@@ -173,6 +173,9 @@ int main (int argc, char* argv[])
 		case 'i':
 			internal_file = optarg;
 			break;
+		case 'e':
+			ipfix_elements = optarg;
+			break;
 		case 'd':
 			daemonize = true;
 			break;
@@ -182,7 +185,13 @@ int main (int argc, char* argv[])
 			exit (EXIT_SUCCESS);
 			break;
 		case 'v':
-			verbose = atoi (optarg);
+			verbose = strtoi (optarg, 10);
+			if (verbose == INT_MAX) {
+				MSG_ERROR(msg_module, "No valid verbosity level provided (%s)", optarg);
+				help ();
+				exit (EXIT_FAILURE);
+			}
+
 			break;
 		case 'V':
 			version ();
@@ -192,13 +201,22 @@ int main (int argc, char* argv[])
 			skip_seq_err = 1;
 			break;
 		case 'r':
-			ring_buffer_size = atoi (optarg);
+			ring_buffer_size = strtoi (optarg, 10);
+			if (ring_buffer_size == INT_MAX) {
+				MSG_ERROR(msg_module, "No valid ring buffer size provided (%s)", optarg);
+				help ();
+				exit (EXIT_FAILURE);
+			}
+
 			break;
 		case 'S':
-			stat_interval = atoi(optarg);
-			break;
-		case 'e':
-			ipfix_elements = optarg;
+			stat_interval = strtoi (optarg, 10);
+			if (stat_interval == INT_MAX) {
+				MSG_ERROR(msg_module, "No valid statistics interval provided (%s)", optarg);
+				help ();
+				exit (EXIT_FAILURE);
+			}
+
 			break;
 		default:
 			MSG_ERROR(msg_module, "Unknown parameter %c", c);
@@ -225,21 +243,18 @@ int main (int argc, char* argv[])
 	 */LIBXML_TEST_VERSION
 	xmlIndentTreeOutput = 1;
 
-	/*
-	 * open and prepare XML configuration file
-	 */
 	/* check config file */
 	if (config_file == NULL) {
 		/* and use default if not specified */
 		config_file = DEFAULT_CONFIG_FILE;
-		MSG_NOTICE(msg_module, "Using default configuration file %s.", config_file);
+		MSG_NOTICE(msg_module, "Using default configuration file: %s", config_file);
 	}
 
 	/* check internal config file */
 	if (internal_file == NULL) {
 		/* and use default if not specified */
 		internal_file = INTERNAL_CONFIG_FILE;
-		MSG_NOTICE(msg_module, "Using default internal configuration file %s.", internal_file);
+		MSG_NOTICE(msg_module, "Using default internal configuration file: %s", internal_file);
 	}
 	  
 	/* Initialize configurator */
@@ -300,7 +315,6 @@ int main (int argc, char* argv[])
 	/*
 	 * create Template Manager
 	 */
-
 	template_mgr = tm_create();
 	if (template_mgr == NULL) {
 		MSG_ERROR(msg_module, "[%d] Unable to create Template Manager", config->proc_id);
@@ -331,10 +345,10 @@ int main (int argc, char* argv[])
 	}
 	
 	/* main loop */
-	while (!done) {
+	while (!terminating) {
 		/* get data to process */
 		if ((get_retval = config->input.get (config->input.config, &input_info, &packet, &source_status)) < 0) {
-			if ((!reconf && !done) || get_retval != INPUT_INTR) { /* if interrupted and closing, it's ok */
+			if ((!reconf && !terminating) || get_retval != INPUT_INTR) { /* if interrupted and closing, it's ok */
 				MSG_WARNING(msg_module, "[%d] Getting IPFIX data failed!", config->proc_id);
 			}
 			
@@ -357,7 +371,7 @@ int main (int argc, char* argv[])
 			}
 			/* if input plugin is file reader, end collector */
 			if (input_info->type == SOURCE_TYPE_IPFIX_FILE) {
-				done = 1;
+				terminating = 1;
 			}
 		}
 		/* distribute data to the particular Data Manager for further processing */
