@@ -252,7 +252,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct ipfix_entity *target_field;
     for (i = 0; i < vendor_fields_count; ++i) {
         // Iterate over all fields in template record
-        uint8_t field_modified = 0;
+        uint8_t mapping_applied = 0;
         uint16_t count = 0, index = 0;
         while (count < ntohs(new_rec->count)
                 && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
@@ -264,13 +264,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
                 // Replace field ID
                 new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
 
-                // No need to update the field length, since we require the lengths to be identical, for now
-                if (new_rec->fields[index].ie.length != htons(target_field->length)) {
-                    MSG_WARNING(msg_module, "Mapping source and target fields have different lengths \
-                        (template ID: %u, target field ID: %u, target field length: %u)", template_id, target_field->element_id, target_field->length);
-                }
-
-                field_modified = 1;
+                mapping_applied = 1;
             }
 
             // If there is a PEN stored for this IE, it comes just after the IE, before the next IE
@@ -278,12 +272,12 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
                 ++index;
             }
 
-            if (field_modified) {
+            if (mapping_applied) {
                 // Replace PEN
                 new_rec->fields[index].enterprise_number = htonl(target_field->pen);
 
                 // Reset for next iteration
-                field_modified = 0;
+                mapping_applied = 0;
 
                 // Skip looping over full set of fields, since every IE can exist only once
                 break;

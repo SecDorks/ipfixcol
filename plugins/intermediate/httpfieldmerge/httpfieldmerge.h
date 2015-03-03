@@ -68,20 +68,19 @@
 #define TEMPL_MAX_LEN 100000
 #define TARGET_FIELD_PEN 44913
 
-// IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)
-#define inveaHttpHost   { 39499,   1, 32,  "inveaHttpHost" }
-#define inveaHttpUrl    { 39499,   2, 64,  "inveaHttpUrl" }
+// IPFIX Information Elements used within this plugin (PEN, ID, name)
+#define inveaHttpHost   { 39499,   1, "inveaHttpHost" }
+#define inveaHttpUrl    { 39499,   2, "inveaHttpUrl" }
 
-#define ntopHttpHost    { 35632, 187, 32,  "ntopHttpHost" }
-#define ntopHttpUrl     { 35632, 180, 64,  "ntopHttpUrl" }
+#define ntopHttpHost    { 35632, 187, "ntopHttpHost" }
+#define ntopHttpUrl     { 35632, 180, "ntopHttpUrl" }
 
-#define rsHttpHost      { 44913,  20, 32,  "rsHttpHost" }
-#define rsHttpUrl       { 44913,  21, 64,  "rsHttpUrl" }
+#define rsHttpHost      { 44913,  20, "rsHttpHost" }
+#define rsHttpUrl       { 44913,  21, "rsHttpUrl" }
 
 struct ipfix_entity {
     uint32_t pen;
     uint16_t element_id;
-    uint16_t length;
     char *entity_name;
 };
 
