@@ -73,19 +73,19 @@
 #define TEMPL_MAX_LEN 100000
 
 // IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)
-#define sourceTransportPort             { 0,  7,   2,  "sourceTransportPort" }
-#define sourceIPv4Address               { 0,  8,   4,  "sourceIPv4Address" }
-#define destinationTransportPort        { 0,  11,  2,  "destinationTransportPort" }
-#define destinationIPv4Address          { 0,  12,  4,  "destinationIPv4Address" }
-#define sourceIPv6Address               { 0,  27, 16,  "sourceIPv6Address" }
-#define destinationIPv6Address          { 0,  28, 16,  "destinationIPv6Address"}
+#define sourceTransportPort             { 0,       7,  2,  "sourceTransportPort" }
+#define sourceIPv4Address               { 0,       8,  4,  "sourceIPv4Address" }
+#define destinationTransportPort        { 0,      11,  2,  "destinationTransportPort" }
+#define destinationIPv4Address          { 0,      12,  4,  "destinationIPv4Address" }
+#define sourceIPv6Address               { 0,      27, 16,  "sourceIPv6Address" }
+#define destinationIPv6Address          { 0,      28, 16,  "destinationIPv6Address"}
 
-#define origSourceTransportPort         { 44913, 10,  2,  "origSourceTransportPort" }
-#define origSourceIPv4Address           { 44913, 11,  4,  "origSourceIPv4Address" }
-#define origDestinationTransportPort    { 44913, 12,  2,  "origDestinationTransportPort" }
-#define origDestinationIPv4Address      { 44913, 13,  4,  "origDestinationIPv4Address" }
-#define origSourceIPv6Address           { 44913, 14, 16,  "origSourceIPv6Address" }
-#define origDestinationIPv6Address      { 44913, 15, 16,  "origDestinationIPv6Address" }
+#define origSourceTransportPort         { 44913,  10,  2,  "origSourceTransportPort" }
+#define origSourceIPv4Address           { 44913,  11,  4,  "origSourceIPv4Address" }
+#define origDestinationTransportPort    { 44913,  12,  2,  "origDestinationTransportPort" }
+#define origDestinationIPv4Address      { 44913,  13,  4,  "origDestinationIPv4Address" }
+#define origSourceIPv6Address           { 44913,  14, 16,  "origSourceIPv6Address" }
+#define origDestinationIPv6Address      { 44913,  15, 16,  "origDestinationIPv6Address" }
 
 #define inveaHttpHost                   { 39499,   1, 32,  "inveaHttpHost" }
 #define inveaHttpUrl                    { 39499,   2, 64,  "inveaHttpUrl" }
@@ -96,38 +96,38 @@
 #define rsHttpHost                      { 44913,  20, 32,  "rsHttpHost" }
 #define rsHttpUrl                       { 44913,  21, 64,  "rsHttpUrl" }
 
-struct ipfix_entity port_number_fields[] = {
+struct ipfix_ie port_number_fields[] = {
     sourceTransportPort, destinationTransportPort
 };
 #define port_number_fields_count    2
 
-struct ipfix_entity source_fields[] = {
+struct ipfix_ie source_fields[] = {
     sourceTransportPort, sourceIPv4Address, sourceIPv6Address, origSourceTransportPort, origSourceIPv4Address, origSourceIPv6Address
 };
 #define source_fields_count         6
 
-struct ipfix_entity orig_fields_IPv4[] = {
+struct ipfix_ie orig_fields_IPv4[] = {
     origSourceTransportPort, origSourceIPv4Address, origDestinationTransportPort, origDestinationIPv4Address
 };
-struct ipfix_entity orig_fields_IPv6[] = {
+struct ipfix_ie orig_fields_IPv6[] = {
     origSourceTransportPort, origSourceIPv6Address, origDestinationTransportPort, origDestinationIPv6Address
 };
 #define orig_fields_count           4
 
-struct ipfix_entity invea_fields[] = {
+struct ipfix_ie invea_fields[] = {
     inveaHttpHost, inveaHttpUrl
 };
-struct ipfix_entity ntop_fields[] = {
+struct ipfix_ie ntop_fields[] = {
     ntopHttpHost, ntopHttpUrl
 };
-struct ipfix_entity rs_fields[] = {
+struct ipfix_ie rs_fields[] = {
     rsHttpHost, rsHttpUrl
 };
 #define vendor_fields_count         2
 
 struct field_mapping {
-    struct ipfix_entity from;
-    struct ipfix_entity to;
+    struct ipfix_ie from;
+    struct ipfix_ie to;
 };
 
 struct field_mapping IPv4_field_mappings[] = {

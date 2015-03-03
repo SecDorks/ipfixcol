@@ -75,7 +75,7 @@
 #include "ares_util.h"
 #include "uthash.h"
 
-struct ipfix_entity {
+struct ipfix_ie {
     uint32_t pen;
     uint16_t element_id;
     uint16_t length;

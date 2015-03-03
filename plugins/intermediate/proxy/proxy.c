@@ -117,16 +117,16 @@ static int is_source_field (uint16_t id) {
  * \param[in] pen IANA Private Enterprise Number
  * \return Field reference if supplied PEN is known, NULL otherwise
  */
-static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
-    struct ipfix_entity *fields = NULL;
+static struct ipfix_ie* pen_to_enterprise_fields (uint32_t pen) {
+    struct ipfix_ie *fields = NULL;
     switch (pen) {
-        case 35632:     fields = (struct ipfix_entity *) ntop_fields;
+        case 35632:     fields = (struct ipfix_ie *) ntop_fields;
                         break;
 
-        case 39499:     fields = (struct ipfix_entity *) invea_fields;
+        case 39499:     fields = (struct ipfix_ie *) invea_fields;
                         break;
 
-        case 44913:     fields = (struct ipfix_entity *) rs_fields;
+        case 44913:     fields = (struct ipfix_ie *) rs_fields;
                         break;
 
         default:        MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
@@ -268,8 +268,8 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
          * to be stored in 'source' fields, or whether the 'current' field is a 'destination' field
          * and the new information has to be stored in 'destination' fields.
          */
-        if ((ares_proc->proxy_port_field_id == ((struct ipfix_entity) sourceTransportPort).element_id && is_source_field(element_id))
-                || (ares_proc->proxy_port_field_id == ((struct ipfix_entity) destinationTransportPort).element_id && !is_source_field(element_id))) {
+        if ((ares_proc->proxy_port_field_id == ((struct ipfix_ie) sourceTransportPort).element_id && is_source_field(element_id))
+                || (ares_proc->proxy_port_field_id == ((struct ipfix_ie) destinationTransportPort).element_id && !is_source_field(element_id))) {
             offset = template_contains_field(ares_proc->templ, element_id);
         } else {
             continue;
@@ -308,8 +308,8 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats->id = template_id;
         templ_stats->http_fields_pen = 0;
         templ_stats->http_fields_pen_determined = 0;
-        templ_stats->ipv4 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_entity) sourceIPv4Address).element_id, NULL) != NULL);
-        templ_stats->ipv6 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_entity) sourceIPv6Address).element_id, NULL) != NULL);
+        templ_stats->ipv4 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_ie) sourceIPv4Address).element_id, NULL) != NULL);
+        templ_stats->ipv6 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_ie) sourceIPv6Address).element_id, NULL) != NULL);
 
         // Store result in hashmap
         HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats);
@@ -611,7 +611,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     }
 
     // Obtain pointer to which HTTP fields to use (from which exporter vendor)
-    struct ipfix_entity *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
+    struct ipfix_ie *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
 
     // Retrieve HTTP hostname
     char http_hostname[HTTP_FIELD_WORKING_SIZE + 1];
