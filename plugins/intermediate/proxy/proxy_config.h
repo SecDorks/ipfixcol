@@ -67,10 +67,11 @@
 
 #include "proxy.h"
 
-#define DEFAULT_STAT_INTERVAL 20
+#define DEFAULT_STAT_INTERVAL   20
 #define HTTP_FIELD_WORKING_SIZE 65
-#define NFV9_CONVERSION_PEN 0xFFFFFFFF
-#define TEMPL_MAX_LEN 100000
+#define NFV9_CONVERSION_PEN     0xFFFFFFFF
+#define TEMPL_MAX_LEN           100000
+#define VAR_LEN_ELEM_LEN        65535
 
 // IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)
 #define sourceTransportPort             { 0,       7,  2,  "sourceTransportPort" }
@@ -87,14 +88,15 @@
 #define origSourceIPv6Address           { 44913,  14, 16,  "origSourceIPv6Address" }
 #define origDestinationIPv6Address      { 44913,  15, 16,  "origDestinationIPv6Address" }
 
-#define inveaHttpHost                   { 39499,   1, 32,  "inveaHttpHost" }
-#define inveaHttpUrl                    { 39499,   2, 64,  "inveaHttpUrl" }
+// Zero-length fields are fields with variable lengths
+#define inveaHttpHost                   { 39499,   1,  0,  "inveaHttpHost" }
+#define inveaHttpUrl                    { 39499,   2,  0,  "inveaHttpUrl" }
 
-#define ntopHttpHost                    { 35632, 187, 32,  "ntopHttpHost" }
-#define ntopHttpUrl                     { 35632, 180, 64,  "ntopHttpUrl" }
+#define ntopHttpHost                    { 35632, 187,  0,  "ntopHttpHost" }
+#define ntopHttpUrl                     { 35632, 180,  0,  "ntopHttpUrl" }
 
-#define rsHttpHost                      { 44913,  20, 32,  "rsHttpHost" }
-#define rsHttpUrl                       { 44913,  21, 64,  "rsHttpUrl" }
+#define rsHttpHost                      { 44913,  20,  0,  "rsHttpHost" }
+#define rsHttpUrl                       { 44913,  21,  0,  "rsHttpUrl" }
 
 struct ipfix_ie port_number_fields[] = {
     sourceTransportPort, destinationTransportPort

@@ -75,6 +75,12 @@
 // Identifier for MSG_* macros
 static char *msg_module = "proxy";
 
+// Auxiliary functions for extracting data of exact length
+#define read8(ptr)  (*((uint8_t *)  (ptr)))
+#define read16(ptr) (*((uint16_t *) (ptr)))
+#define read32(ptr) (*((uint32_t *) (ptr)))
+#define read64(ptr) (*((uint64_t *) (ptr)))
+
 /**
  * \brief Checks whether a specified element (ID) represents a port number.
  *
@@ -317,37 +323,58 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
 
     // Determine exporter PEN based on presence of certain enterprise-specific IEs
     if (templ_stats->http_fields_pen_determined == 0) { // Do only if it was not done (successfully) before
+        struct ipfix_template_row *templ_row;
+
         // Check enterprise-specific IEs from INVEA-TECH
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
-                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from INVEA-TECH in template (template ID: %u)", template_id);
+        for (i = 0; i < vendor_fields_count; ++i) {
+            if ((templ_row = template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL)) != NULL) {
                 templ_stats->http_fields_pen = invea_fields[i].pen;
+                invea_fields[i].length = ntohs(templ_row->length);
             }
         }
 
         // Check enterprise-specific IEs from ntop
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
-                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from ntop in template (template ID: %u)", template_id);
-                templ_stats->http_fields_pen = ntop_fields[i].pen;
+        if (templ_stats->http_fields_pen == 0) {
+            for (i = 0; i < vendor_fields_count; ++i) {
+                if ((templ_row = template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL)) != NULL) {
+                    templ_stats->http_fields_pen = ntop_fields[i].pen;
+                    ntop_fields[i].length = ntohs(templ_row->length);
+                }
             }
         }
 
         // Check enterprise-specific IEs from ntop (converted from NetFlow v9)
         // https://github.com/CESNET/ipfixcol/issues/16
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntop_fields[i].element_id, NULL) != NULL) {
-                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", template_id);
-                templ_stats->http_fields_pen = ntop_fields[i].pen;
+        if (templ_stats->http_fields_pen == 0) {
+            for (i = 0; i < vendor_fields_count; ++i) {
+                if ((templ_row = template_record_get_field(record, NFV9_CONVERSION_PEN, ntop_fields[i].element_id, NULL)) != NULL) {
+                    templ_stats->http_fields_pen = ntop_fields[i].pen;
+                    ntop_fields[i].length = ntohs(templ_row->length);
+                }
             }
         }
 
         // Check enterprise-specific IEs from RS
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
-                MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from RS in template (template ID: %u)", template_id);
-                templ_stats->http_fields_pen = rs_fields[i].pen;
+        if (templ_stats->http_fields_pen == 0) {
+            for (i = 0; i < vendor_fields_count; ++i) {
+                if ((templ_row = template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL)) != NULL) {
+                    templ_stats->http_fields_pen = rs_fields[i].pen;
+                    rs_fields[i].length = ntohs(templ_row->length);
+                }
             }
+        }
+
+        switch (templ_stats->http_fields_pen) {
+            case 35632:     MSG_NOTICE(msg_module, "Detected HTTP IEs from ntop in template (template ID: %u)", template_id);
+                            break;
+
+            case 39499:     MSG_NOTICE(msg_module, "Detected HTTP IEs from INVEA-TECH in template (template ID: %u)", template_id);
+                            break;
+
+            case 44913:     MSG_NOTICE(msg_module, "Detected HTTP IEs from RS in template (template ID: %u)", template_id);
+                            break;
+
+            default:        break;
         }
 
         templ_stats->http_fields_pen_determined = 1;
@@ -522,11 +549,10 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
  */
 void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
-
     uint8_t i, j;
     uint8_t *p;
     uint16_t *msg_data;
-    int ret;
+    int field_offset;
 
     // Get structure from hashmap that provides information about current template
     struct templ_stats_elem_t *templ_stats;
@@ -551,21 +577,21 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     // Check whether and if, which, port number field with proxy port number can be found in this data record
     int proxy_port_field_id = 0; // Stores ID of field with proxy port (or '-1' in case of no proxy)
     for (i = 0; i < port_number_fields_count; ++i) {
-        // Read (source/destination) port number
-        if ((ret = template_contains_field(templ, port_number_fields[i].element_id)) == -1) {
+        // Skip processing if template does not feature source/destination port fields
+        if ((field_offset = template_contains_field(templ, port_number_fields[i].element_id)) == -1) {
             continue;
         }
-        message_get_data((uint8_t **) &msg_data, rec + ret, 2); // Port number fields (see port_number_fields) are 2 bytes in size
+
+        // Read (source/destination) port number
+        uint16_t port = ntohs(read16(rec + field_offset));
 
         // Check whether (source/destination) port number is a proxy port number
         for (j = 0; j < proc->plugin_conf->proxy_port_count; ++j) {
-            if (ntohs((uint16_t) *msg_data) == proc->plugin_conf->proxy_ports[j]) {
+            if (port == proc->plugin_conf->proxy_ports[j]) {
                 proxy_port_field_id = port_number_fields[i].element_id;
                 break;
             }
         }
-
-        free(msg_data);
 
         // Skip if port number field with proxy port number has already been found
         if (proxy_port_field_id) {
@@ -613,20 +639,53 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     // Obtain pointer to which HTTP fields to use (from which exporter vendor)
     struct ipfix_ie *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
 
+    uint8_t *value_offset;
+    uint16_t field_length;
+
     // Retrieve HTTP hostname
     char http_hostname[HTTP_FIELD_WORKING_SIZE + 1];
-    ret = template_contains_field(templ, http_fields[0].element_id | 0x8000);
-    message_get_data((uint8_t **) &msg_data, rec + ret, http_fields[0].length);
-    memcpy(http_hostname, msg_data, http_fields[0].length);
-    http_hostname[http_fields[0].length] = '\0';
+    field_offset = template_contains_field(templ, http_fields[0].element_id | 0x8000);
+
+    if (http_fields[0].length == VAR_LEN_ELEM_LEN) {
+        // Determine actual field length based on field's first byte
+        field_length = read8(rec + field_offset);
+        value_offset = rec + field_offset + 1;
+
+        if (field_length == 255) {
+            field_length = read16(rec + field_offset + 1);
+            value_offset = rec + field_offset + 3;
+        }
+    } else {
+        field_length = http_fields[0].length;
+        value_offset = rec + field_offset;
+    }
+
+    message_get_data((uint8_t **) &msg_data, value_offset, field_length);
+    memcpy(http_hostname, msg_data, field_length);
+    http_hostname[field_length] = '\0';
     free(msg_data);
 
     // Retrieve HTTP URL
     char http_url[HTTP_FIELD_WORKING_SIZE + 1];
-    ret = template_contains_field(templ, http_fields[1].element_id | 0x8000);
-    message_get_data((uint8_t **) &msg_data, rec + ret, http_fields[1].length);
-    memcpy(http_url, msg_data, http_fields[1].length);
-    http_url[http_fields[1].length] = '\0';
+    field_offset = template_contains_field(templ, http_fields[1].element_id | 0x8000);
+
+    if (http_fields[1].length == VAR_LEN_ELEM_LEN) {
+        // Determine actual field length based on field's first byte
+        field_length = read8(rec + field_offset);
+        value_offset = rec + field_offset + 1;
+
+        if (field_length == 255) {
+            field_length = read16(rec + field_offset + 1);
+            value_offset = rec + field_offset + 3;
+        }
+    } else {
+        field_length = http_fields[1].length;
+        value_offset = rec + field_offset;
+    }
+
+    message_get_data((uint8_t **) &msg_data, value_offset, field_length);
+    memcpy(http_url, msg_data, field_length);
+    http_url[field_length] = '\0';
     free(msg_data);
 
     /*
