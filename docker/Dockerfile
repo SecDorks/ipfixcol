@@ -115,6 +115,13 @@ WORKDIR /tmp/
 # RUN make; make install
 # WORKDIR /tmp/
 
+# Install fbitexpire
+# WORKDIR ipfixcol/tools/fbitexpire/
+# RUN autoreconf -if
+# RUN ./configure
+# RUN make; make install
+# WORKDIR /tmp/
+
 # Clean up temporary files (used for building IPFIXcol)
 RUN apt-get clean
 RUN rm -r *
