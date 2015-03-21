@@ -146,6 +146,7 @@ static struct ipfix_entity* field_to_mapping_target (struct field_mapping* mappi
 void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
+    (void) rec_len;
     int i;
 
     // Determine IP versions used within this template
@@ -326,6 +327,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
  */
 void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data) {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
+    (void) templ;
 
     // Copy original data record
     memcpy(proc->msg + proc->offset, rec, rec_len);
