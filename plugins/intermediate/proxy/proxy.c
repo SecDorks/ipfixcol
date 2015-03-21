@@ -152,6 +152,7 @@ static struct ipfix_ie* pen_to_enterprise_fields (uint32_t pen) {
  */
 static void ares_cb (void *arg, int status, int timeouts, struct hostent *hostent) {
     struct proxy_ares_processor *ares_proc = (struct proxy_ares_processor *) arg;
+    (void) timeouts;
     char *ip_addr;
     uint8_t i, offset;
     uint16_t element_id, template_id, length;
@@ -303,6 +304,7 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
 void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
+    (void) rec_len;
     int i;
 
     // Determine IP versions used within this template
