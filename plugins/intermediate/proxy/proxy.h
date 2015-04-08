@@ -105,6 +105,7 @@ struct proxy_config {
     uint64_t records_resolution;
     uint64_t records_wo_resolution;
     uint64_t failed_resolutions;
+    uint64_t skipped_resolutions;
 
     // Variables for use by c-ares
     ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels

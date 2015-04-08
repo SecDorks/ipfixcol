@@ -113,7 +113,7 @@ void *stat_thread (void* config) {
 
         MSG_INFO(msg_module, "");
         MSG_INFO(msg_module, "Records with domain resolution: %u; records without domain resolution: %u", conf->records_resolution, conf->records_wo_resolution);
-        MSG_INFO(msg_module, "Failed resolutions: %u", conf->failed_resolutions);
+        MSG_INFO(msg_module, "Failed resolutions: %u; skipped resolutions: %u", conf->failed_resolutions, conf->skipped_resolutions);
         MSG_INFO(msg_module, "");
     }
 

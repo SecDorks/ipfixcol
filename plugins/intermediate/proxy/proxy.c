@@ -735,7 +735,11 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
             || strlen(http_hostname) == http_fields[0].length
             || http_hostname[0] == '/'
             || http_hostname[0] == '.') {
-        ++proc->plugin_conf->records_wo_resolution;
+        if (analyze_hostname == 0) {
+            ++proc->plugin_conf->records_wo_resolution;
+        } else {
+            ++proc->plugin_conf->skipped_resolutions;
+        }
 
         // Copy original data record
         memcpy(proc->msg + proc->offset, rec, rec_len);
@@ -838,6 +842,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->records_resolution = 0;
     conf->records_wo_resolution = 0;
     conf->failed_resolutions = 0;
+    conf->skipped_resolutions = 0;
 
     conf->ares_channel_id = 0;
     conf->name_servers = NULL;
