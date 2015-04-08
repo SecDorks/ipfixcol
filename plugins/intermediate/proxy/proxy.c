@@ -727,14 +727,19 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
      *      - Hostname can never be a valid FQDN (i.e., does not contain a dot (.))
      *      - Hostname has the maximum field length, so we assume it is truncated and thus invalid
      *      - Hostname is merely a path (i.e., starts with a slash (/))
-     *      - Hostname is malformed due to fixed length of 32 bytes (we often see a dot (.) as the first char)
+     *      - Hostname is malformed due to fixed length of 32 bytes (we often see a dot (.) as the first character)
+     *      - Hostname is malformed due to the last character being a dot (.)
+     *      - Hostname is malformed due to the one but last character being a dot (.)
      */
+    int hostname_len = strlen(http_hostname);
     if (terminating
             || analyze_hostname == 0
             || strstr(http_hostname, ".") == NULL
-            || strlen(http_hostname) == http_fields[0].length
+            || hostname_len == http_fields[0].length
             || http_hostname[0] == '/'
-            || http_hostname[0] == '.') {
+            || http_hostname[0] == '.'
+            || http_hostname[hostname_len - 1] == '.'
+            || http_hostname[hostname_len - 2] == '.') {
         if (analyze_hostname == 0) {
             ++proc->plugin_conf->records_wo_resolution;
         } else {
