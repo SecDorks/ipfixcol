@@ -152,6 +152,7 @@ static struct ipfix_ie* pen_to_enterprise_fields (uint32_t pen) {
  */
 static void ares_cb (void *arg, int status, int timeouts, struct hostent *hostent) {
     struct proxy_ares_processor *ares_proc = (struct proxy_ares_processor *) arg;
+    (void) timeouts;
     char *ip_addr;
     uint8_t i, offset;
     uint16_t element_id, template_id, length;
@@ -303,6 +304,7 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
 void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     struct proxy_processor *proc = (struct proxy_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
+    (void) rec_len;
     int i;
 
     // Determine IP versions used within this template
@@ -871,7 +873,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             }
 
             if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
-                char *proxy_port_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                char *proxy_port_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
                 // Only consider this node if its value is non-empty and not longer than 5 characters
                 if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
@@ -880,7 +882,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
                 xmlFree(proxy_port_str);
             } else if (xmlStrcmp(node->name, (const xmlChar *) "nameServer") == 0) {
-                char *name_server_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                char *name_server_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
                 // Only consider this node if its value is non-empty and features at least one dot
                 if (strlen(name_server_str) > 0 && strstr(name_server_str, ".") != NULL) {
@@ -935,7 +937,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
                 xmlFree(name_server_str);
             } else if (xmlStrcmp(node->name, (const xmlChar *) "statInterval") == 0) {
-                char *stat_interval_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                char *stat_interval_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
                 // Only consider this node if its value is non-empty
                 if (strlen(stat_interval_str) > 0) {
@@ -962,7 +964,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             i = 0;
             while (node != NULL) {
                 if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
-                    char *proxy_port_str = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                    char *proxy_port_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
                     // Only consider this node if its value is non-empty and not longer than 5 characters
                     if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {

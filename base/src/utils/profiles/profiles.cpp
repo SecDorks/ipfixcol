@@ -1,5 +1,5 @@
 /**
- * \file profile_tree.cpp
+ * \file profiles.cpp
  * \author Michal Kozubik <kozubik@cesnet.cz>
  * \brief Code for loading profile tree from XML file
  *
@@ -44,15 +44,21 @@ extern "C" {
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <ipfixcol/profiles.h>
 }
 
-#include "profile_tree.h"
+#include "Profile.h"
+#include "Channel.h"
+
+#include "profiles_internal.h"
 #include <iostream>
 
 #define profile_id(_profile_) (_profile_) ? (_profile_)->getName().c_str() : "live"
 #define throw_empty throw std::runtime_error(std::string(""));
 
 static const char *msg_module = "profile_tree";
+
+extern "C" int yyparse (struct filter_parser_data *data);
 
 /**
  * \brief Parse filter string
@@ -68,7 +74,7 @@ int parse_filter(filter_parser_data* pdata)
 	yylex_init(&(pdata->scanner));
 	YY_BUFFER_STATE bp = yy_scan_string(pdata->filter, pdata->scanner);
 	yy_switch_to_buffer(bp, pdata->scanner);
-    
+
 	/* Parse filter */
 	ret = yyparse(pdata);
 	
@@ -85,6 +91,7 @@ int parse_filter(filter_parser_data* pdata)
  * 
  * \param[in] profile Channel's profile
  * \param[in] root channel xml configuration root
+ * \param[in] pdata Filter parser data
  * \return new Channel object
  */
 Channel *process_channel(Profile *profile, xmlNode *root, struct filter_parser_data *pdata)
@@ -103,22 +110,23 @@ Channel *process_channel(Profile *profile, xmlNode *root, struct filter_parser_d
 	xmlFree(aux_char);
 	channel->setProfile(profile);
 	
-	/* Allocate space for filter */
-	filter_profile *fp = (filter_profile *) calloc(1, sizeof(filter_profile));
-	if (!fp) {
-		MSG_ERROR(msg_module, "Profile %s: channel %s: unable to allocate memory (%s:%d)", profile_id(profile), channel->getName().c_str(), __FILE__, __LINE__);
-		delete channel;
-		throw_empty;
-	}
-	
 	/* Initialize parser data */
-	pdata->profile = fp;
 	pdata->filter = NULL;
 	
 	/* Iterate through elements */
 	for (xmlNode *node = root->children; node; node = node->next) {
 		
 		if (!xmlStrcmp(node->name, (const xmlChar *) "filter")) {
+			/* Allocate space for filter */
+			filter_profile *fp = (filter_profile *) calloc(1, sizeof(filter_profile));
+			if (!fp) {
+				MSG_ERROR(msg_module, "Profile %s: channel %s: unable to allocate memory (%s:%d)", profile_id(profile), channel->getName().c_str(), __FILE__, __LINE__);
+				delete channel;
+				throw_empty;
+			}
+
+			pdata->profile = fp;
+
 			/* Parse filter */
 			pdata->filter = (char *) xmlNodeGetContent(node->children);
 			if (parse_filter(pdata) != 0) {
@@ -151,6 +159,7 @@ Channel *process_channel(Profile *profile, xmlNode *root, struct filter_parser_d
  * 
  * \param[in] parent Profile's parent
  * \param[in] root profile xml configuration root
+ * \param[in] pdata Filter parser data
  * \return new Profile object
  */
 Profile *process_profile(Profile *parent, xmlNode *root, struct filter_parser_data *pdata)
@@ -205,7 +214,7 @@ void free_parser_data(struct filter_parser_data *pdata)
 /**
  * \brief Process profile tree xml configuration
  * 
- * \param[in] file configuration xml file
+ * \param[in] filename XML configuration file
  * \return Pointer to root profile
  */
 Profile *process_profile_xml(const char *filename)
@@ -242,7 +251,10 @@ Profile *process_profile_xml(const char *filename)
 
 	try {
 		/* Iterate throught all profiles */
-		for (xmlNode *node = root; node; node = node->next) {
+		/* rootProfile must be considered as loop condition, since storage allocated
+		   by process_profile will be leaked otherwise
+		 */
+		for (xmlNode *node = root; node && !rootProfile; node = node->next) {
 			if (node->type != XML_ELEMENT_NODE) {
 				continue;
 			}
@@ -259,10 +271,167 @@ Profile *process_profile_xml(const char *filename)
 		return NULL;
 	}
 
+	close(fd);
+	xmlFreeDoc(doc);
+	free_parser_data(&pdata);
+
 	if (!rootProfile) {
 		MSG_ERROR(msg_module, "No profile found in profile tree configuration");
 		return NULL;
 	}	
 
+	rootProfile->updatePathName();
+
 	return rootProfile;
+}
+
+
+/* API FUNCTIONS */
+
+/**
+ * Process XML configuration
+ */
+void *profiles_process_xml(const char *path)
+{
+	return (void*) process_profile_xml(path);
+}
+
+/* ==== PROFILE ==== */
+/**
+ * Get profile name
+ */
+const char *profile_get_name(void *profile)
+{
+	return ((Profile *) profile)->getName().c_str();
+}
+
+/**
+ * Get profile path
+ */
+const char *profile_get_path(void *profile)
+{
+	return ((Profile *) profile)->getPathName().c_str();
+}
+
+/**
+ * Get number of children
+ */
+uint16_t profile_get_children(void *profile)
+{
+	return ((Profile *) profile)->getChildren().size();
+}
+
+/**
+ * Get number of channels
+ */
+uint16_t profile_get_channels(void *profile)
+{
+	return ((Profile *) profile)->getChannels().size();
+}
+
+/**
+ * Get parent profile
+ */
+void *profile_get_parent(void *profile)
+{
+	return (void *) ((Profile *) profile)->getParent();
+}
+
+/**
+ * Get child on given index
+ */
+void *profile_get_child(void *profile, uint16_t index)
+{
+	Profile *p = (Profile *) profile;
+	return p->getChildren().size() > index ? p->getChildren()[index] : NULL;
+}
+
+/**
+ * Get channel on given index
+ */
+void *profile_get_channel(void *profile, uint16_t index)
+{
+	Profile *p = (Profile *) profile;
+	return p->getChannels().size() > index ? p->getChannels()[index] : NULL;
+}
+
+/**
+ * Match profile with data record
+ */
+void **profile_match_data(void *profile, struct ipfix_message *msg, struct metadata *mdata)
+{
+	Profile *p = (Profile *) profile;
+
+	/* Fill data structure */
+	struct match_data data;
+	data.msg = msg;
+	data.mdata = mdata;
+	data.channels = NULL;
+	data.channelsCounter = 0;
+	data.channelsMax = 0;
+
+	/* Find matching channels */
+	p->match(&data);
+	if (data.channels == NULL || data.channelsCounter == 0) {
+		return NULL;
+	}
+
+	/* Add terminating NULL pointer */
+	if (data.channelsCounter == data.channelsMax) {
+		data.channels = (void**) realloc(data.channels, sizeof(void*) * (data.channelsCounter + 1));
+		if (data.channels == NULL) {
+			MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
+			return NULL;
+		}
+	}
+
+	data.channels[data.channelsCounter] = NULL;
+
+	return data.channels;
+}
+
+/**
+ * Free profile with all it's channels and subprofiles
+ */
+void profiles_free(void *profile)
+{
+	delete ((Profile *) profile);
+}
+
+/* ==== CHANNEL ==== */
+/**
+ * Get channel name
+ */
+const char *channel_get_name(void *channel)
+{
+	return ((Channel *) channel)->getName().c_str();
+}
+
+/**
+ * Get channel path
+ */
+const char *channel_get_path(void *channel)
+{
+	return ((Channel *) channel)->getPathName().c_str();
+}
+
+/**
+ * Get channel profile
+ */
+void *channel_get_profile(void *channel)
+{
+	return ((Channel *) channel)->getProfile();
+}
+
+uint16_t channel_get_listeners(void *channel)
+{
+	return ((Channel *) channel)->getListeners().size();
+}
+
+/**
+ * Get number of data sources
+ */
+uint16_t channel_get_sources(void *channel)
+{
+	return ((Channel *) channel)->getSources().size();
 }

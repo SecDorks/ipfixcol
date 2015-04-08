@@ -99,7 +99,9 @@ struct __attribute__((packed)) metadata {
 	uint16_t dstCountry;			/**< Destination country code */
     uint32_t srcAS;                 /**< Source AS */
     uint32_t dstAS;                 /**< Destination AS */
-    uint32_t *profiles;				/**< Array of profiles and channels assigned to this record */
+	void **channels;				/**< Array of channels assigned to this record */
+	char srcName[32];
+	char dstName[32];
 };
 
 /**
@@ -127,6 +129,8 @@ struct __attribute__((__packed__)) ipfix_message {
 	struct ipfix_options_template_set *opt_templ_set[MSG_MAX_OTEMPLATES];
 	/** List of Data Sets (with a link to corresponding template) in the packet */
 	struct data_template_couple       data_couple[MSG_MAX_DATA_COUPLES];
+	/** Pointer to the live profile */
+	void *live_profile;
 	/** List of metadata structures */
 	struct metadata *metadata;
 };

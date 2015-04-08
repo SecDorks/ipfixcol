@@ -1,5 +1,5 @@
 /**
- * \file profiler.h
+ * \file profiles_internal.h
  * \author Michal Kozubik <kozubik@cesnet.cz>
  * \brief intermediate plugin for profiling data
  *
@@ -43,9 +43,18 @@
 extern "C" {
 #include <ipfixcol.h>
 #include "filter.h"
+#include <string.h>
 }
 
 #include <stdexcept>
+
+struct match_data {
+	struct ipfix_message *msg;
+	struct metadata *mdata;
+	void **channels;
+	uint16_t channelsCounter;
+	uint16_t channelsMax;
+};
 
 /* ID types can by changed here */
 using profile_id_t = uint16_t;
@@ -54,7 +63,5 @@ using couple_id_t  = uint32_t;
 
 #include "Profile.h"
 #include "Channel.h"
-
-Profile *process_profile_xml(const char *filename);
 
 #endif	/* PROFILER_H */

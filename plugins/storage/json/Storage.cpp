@@ -39,6 +39,7 @@
 
 extern "C" {
 #include <ipfixcol.h>
+#include <ipfixcol/profiles.h>
 }
 
 #include "Storage.h"
@@ -122,6 +123,11 @@ void Storage::loadElements()
  */
 void Storage::sendData() const
 {
+	if (printOnly) {
+		std::cout << record;
+		return;
+	}
+
 	if (siso_send(sender, record.c_str(), record.length()) != SISO_OK) {
 		throw std::runtime_error(std::string("Sending data: ") + siso_get_last_err(sender));
 	}
@@ -314,19 +320,23 @@ void Storage::storeMetadata(metadata* mdata)
 	ss << "\"dstAS\": \"" << mdata->dstAS << "\", ";
 	ss << "\"srcCountry\": \"" << mdata->srcCountry << "\", ";
 	ss << "\"dstCountry\": \"" << mdata->dstCountry << "\", ";
-	
+	ss << "\"srcName\": \"" << mdata->srcName << "\", ";
+	ss << "\"dstName\": \"" << mdata->dstName << "\", ";
 	
 	/* Profiles */
-	if (mdata->profiles) {
+	if (mdata->channels) {
 		ss << "\"profiles\": [";
 
-		for (int i = 0; mdata->profiles[i] != 0; ++i) {
+		for (int i = 0; mdata->channels[i] != 0; ++i) {
 			if (i > 0) {
 				ss << ", ";
 			}
 			
-			ss << "{\"profile\": " << (mdata->profiles[i] >> 16) << ", ";
-			ss <<  "\"channel\": " << (mdata->profiles[i] & 0xFFFF) << "}";
+			std::string channel = channel_get_name(mdata->channels[i]);
+			std::string profile = profile_get_name(channel_get_profile(mdata->channels[i]));
+
+			ss << "{\"profile\": \"" << profile << "\", ";
+			ss <<  "\"channel\": \"" << channel << "\"}";
 		}
 
 		ss << "]";

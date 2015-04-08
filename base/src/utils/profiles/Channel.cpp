@@ -45,7 +45,7 @@
 channel_id_t Channel::channels_cnt = 1;
 
 /* Identifier for verbose macros */
-static const char *msg_module = "profiler_tree";
+static const char *msg_module = "profiles";
 
 /**
  * Trim string
@@ -70,7 +70,7 @@ void trim(std::string& str)
  * Constructor
  */
 Channel::Channel(std::string name)
-: m_id{channels_cnt++}, m_name{name}
+: m_id{channels_cnt++}, m_name{name}, m_pathName{name}
 {
 }
 
@@ -108,7 +108,7 @@ void Channel::setSources(std::string sources)
 		
 		/* Process data from all channels */
 		if (channel == "*") {
-			for (auto ch: m_profile->getParent()->getChannels()) {
+			for (auto& ch: m_profile->getParent()->getChannels()) {
 				ch->addListener(this);
 			}
 			continue;
@@ -116,7 +116,7 @@ void Channel::setSources(std::string sources)
 		
 		/* Find channel in parent profile */
 		Channel *src{};
-		for (auto ch: m_profile->getParent()->getChannels()) {
+		for (auto& ch: m_profile->getParent()->getChannels()) {
 			if (ch->getName() == channel) {
 				src = ch;
 				break;
@@ -182,20 +182,67 @@ void Channel::setFilter(filter_profile* filter)
 }
 
 /**
+ * Update path name
+ */
+void Channel::updatePathName()
+{
+	if (m_profile) {
+		m_pathName = m_profile->getPathName() + "channels/";
+	} else {
+		m_pathName = "";
+	}
+}
+
+/**
  * Match channel filter to data record
  */
-void Channel::match(ipfix_message* msg, metadata* mdata, std::vector<couple_id_t>& profiles)
+void Channel::match(ipfix_message* msg, metadata* mdata, std::vector<Channel *>& channels)
 {
 	if (m_filter && !filter_fits_node(m_filter->root, msg, &(mdata->record))) {
 		return;
 	}
 	
 	/* Mark channel into metadata */
-	couple_id_t couple_id = (((couple_id_t) m_profile->getId()) << (sizeof(profile_id_t) * 8)) + m_id;
-	profiles.push_back(couple_id);
+	channels.push_back(this);
 	
 	/* Process all listeners */
-	for (auto child: m_listeners) {
-		child->match(msg, mdata, profiles);
+	for (auto& child: m_listeners) {
+		child->match(msg, mdata, channels);
+	}
+}
+
+void Channel::match(struct match_data *data)
+{
+	if (m_filter && !filter_fits_node(m_filter->root, data->msg, &(data->mdata->record))) {
+		return;
+	}
+
+	if (data->channelsMax == 0) {
+		data->channelsMax = 5;
+		data->channels = (void**) calloc(data->channelsMax, sizeof(void*));
+		if (data->channels == NULL) {
+			MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
+			return;
+		}
+	} else if (data->channelsCounter == data->channelsMax) {
+		data->channels = (void**) realloc(data->channels, sizeof(void*) * data->channelsMax * 2);
+		if (data->channels == NULL) {
+			MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
+			return;
+		}
+
+		memset(&(data->channels[data->channelsMax]), 0, sizeof(void*) * data->channelsMax);
+
+		data->channelsMax *= 2;
+	}
+
+	data->channels[data->channelsCounter++] = (void*) this;
+
+
+	for (auto& child: m_listeners) {
+		child->match(data);
+		if (data->channels == NULL) {
+			return;
+		}
 	}
 }

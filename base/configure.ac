@@ -39,7 +39,7 @@
 AC_PREREQ([2.60])
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([ipfixcol], [0.7.1])
+AC_INIT([ipfixcol], [0.8.0])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability subdir-objects])
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
@@ -99,6 +99,7 @@ LBR_CHECK_XSLTPROC
 
 # Check for standard programs
 AC_PROG_CC
+AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
@@ -111,10 +112,10 @@ AS_IF([test "$VISIBILITY" = "no"], [AC_MSG_ERROR([compiler does not support -fvi
 ### LibXML2 ###
 AC_CHECK_LIB([xml2], [main],
     [LIBS="`xml2-config --libs` $LIBS"
-    CFLAGS="`xml2-config --cflags` $CFLAGS"],
+	CFLAGS="`xml2-config --cflags` $CFLAGS"
+	CPPFLAGS="`xml2-config --cflags` $CPPFLAGS"],
     AC_MSG_ERROR([Libxml2 not found ]))
-
-
+    
 ### TLS support ###
 AS_IF([test "x$with_openssl" != xno],
   [AC_CHECK_LIB([ssl], [SSL_library_init],
@@ -218,6 +219,7 @@ AC_CONFIG_FILES([Makefile
 				src/utils/ipfixconf/Makefile
 				src/utils/ipfixsend/Makefile
 				src/utils/libsiso/Makefile
+				src/utils/profiles/Makefile
 				config/Makefile
 				headers/Makefile
 				documentation/doxygen/Makefile
@@ -245,7 +247,8 @@ echo "
   Prefix........: $prefix
   Distribution..: $DISTRO
   Debug build...: ${enable_debug:-no}
-  C Compiler....: $CC $AM_CFLAGS $CFLAGS $CPPFLAGS
+  C Compiler....: $CC $AM_CFLAGS $CFLAGS
+  C++ Compiler..: $CXX $AM_CXXFLAGS $CXXFLAGS $AM_CPPFLAGS $CPPFLAGS
   Linker........: $LDFLAGS $LIBS
   rpmbuild......: ${RPMBUILD:-NONE}
   Build doc.....: ${enable_doc:-yes}

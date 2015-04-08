@@ -58,8 +58,8 @@ static char *msg_module = "template manager";
 struct ipfix_template_mgr_record *tm_record_create()
 {
 	struct ipfix_template_mgr_record *tmr = NULL;
-
-	if ((tmr = calloc(1, sizeof(struct ipfix_template_mgr_record))) == NULL) {
+	tmr = calloc(1, sizeof(struct ipfix_template_mgr_record));
+	if (!tmr) {
 		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 		return NULL;
 	}
@@ -68,10 +68,14 @@ struct ipfix_template_mgr_record *tm_record_create()
 	tmr->counter = 0;
 	tmr->max_length = 32;
 	tmr->templates = calloc(tmr->max_length, sizeof(struct ipfix_template *));
+	if (!tmr->templates) {
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+		free(tmr);
+		return NULL;
+	}
 
 	return tmr;
 }
-
 
 /**
  * \brief Find template managers record in template manager
@@ -93,7 +97,6 @@ struct ipfix_template_mgr_record *tm_record_lookup(struct ipfix_template_mgr *tm
 	
 	return NULL;
 }
-
 
 /**
  * \brief Find (or insert if not found) template managers record in template manager
@@ -194,8 +197,16 @@ static int tm_fill_template(struct ipfix_template *template, void *template_reco
 							(uint8_t*)((struct ipfix_options_template_record*) template_record)->fields,
 							template_length - sizeof(struct ipfix_template) + sizeof(template_ie));
 	}
+	
 	template->references = 0;
 	template->next = NULL;
+	template->first_transmission = time(NULL);
+
+	int i;
+	for (i = 0; i < OF_COUNT; ++i) {
+		template->offsets[i] = -1;
+	}
+
 	return 0;
 }
 
@@ -228,14 +239,16 @@ static uint16_t tm_template_length(struct ipfix_template_record *template, int m
 
 		if (tmp_data_length == 0xffff) {
 			/* this Information Element has variable length */
-			data_record_length |= 0x80000000;  /* taint this variable. we can't count on it anymore,
-			                                    * but it can tell us what is the smallest length
-			                                    * of the Data Record possible */
+			/* taint this variable. we can't count on it anymore,
+			 * but it can tell us what is the smallest length
+			 * of the Data Record possible */
+			data_record_length |= 0x80000000;
 			data_record_length += 1;           /* every field is at least 1 byte long */
 		} else {
 			/* actual length is stored in the template */
 			data_record_length += tmp_data_length;
 		}
+
 		/* enterprise element has first bit set to 1 */
 		if (ntohs((*((uint16_t *) (fields+fields_length)))) & 0x8000) {
 			fields_length += TEMPLATE_ENT_NUM_LEN;
@@ -418,6 +431,33 @@ int tm_record_template_index(struct ipfix_template_mgr_record *tmr, uint16_t id)
 	return -1;
 }
 
+int tm_compare_templates(struct ipfix_template *first, struct ipfix_template *second)
+{
+	if (first->data_length != second->data_length || first->field_count != second->field_count) {
+		return 1;
+	}
+
+	uint16_t count = first->field_count;
+
+	for (uint16_t i = 0; i < count; ++i) {
+		if (first->fields[i].ie.id != second->fields[i].ie.id
+				|| first->fields[i].ie.length != second->fields[i].ie.length) {
+			return 1;
+		}
+
+		if (first->fields[i].ie.id >> 15) {
+			i++;
+			count++;
+
+			if (first->fields[i].enterprise_number != second->fields[i].enterprise_number) {
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 /**
  * \brief Update template in template managers record
  *
@@ -444,6 +484,19 @@ struct ipfix_template *tm_record_update_template(struct ipfix_template_mgr_recor
 	/* save IDs */
 	uint16_t templ_id = tmr->templates[i]->template_id;
 	
+	/* Create new template */
+	if ((new_tmpl = tm_create_template(template, max_len, type, odid)) == NULL) {
+		return NULL;
+	}
+
+	if (tm_compare_templates(new_tmpl, tmr->templates[i]) == 0) {
+		/* Templates are the same, no need to update */
+		free(new_tmpl);
+		MSG_DEBUG(msg_module, "[%u] Received the same template as last time, not replacing", odid);
+		return tmr->templates[i];
+	}
+
+	new_tmpl->template_id = templ_id;
 
 	if (tmr->templates[i]->references == 0) {
 		if (tmr->templates[i]->next == NULL) {
@@ -455,7 +508,7 @@ struct ipfix_template *tm_record_update_template(struct ipfix_template_mgr_recor
 			}
 			/* create a new one */
 			MSG_DEBUG(msg_module, "Creating new template... %d", id);
-			new_tmpl = tm_record_add_template(tmr, template, max_len, type, odid);
+			new_tmpl = tm_record_insert_template(tmr, new_tmpl);
 			if (new_tmpl) {
 				new_tmpl->template_id = templ_id;
 			}
@@ -470,13 +523,6 @@ struct ipfix_template *tm_record_update_template(struct ipfix_template_mgr_recor
 	} else {
 		MSG_DEBUG(msg_module, "[%u] Template %d cannot be removed (%u references), but it will be marked as 'old'", odid, id, tmr->templates[i]->references);
 	}
-
-	/* Create new template and place it on beginning of list */
-	if ((new_tmpl = tm_create_template(template, max_len, type, odid)) == NULL) {
-		return NULL;
-	}
-	
-	new_tmpl->template_id = templ_id;
 
 	/* Inserting new template */
 	new_tmpl->next = tmr->templates[i];
@@ -514,11 +560,13 @@ struct ipfix_template *tm_record_get_template(struct ipfix_template_mgr_record *
 /**
  * \brief Remove all templates from Template Manager's record
  *
+ * \param[in] tm Template Manager
  * \param[in] tmr Template Manager's record
  * \param[in] type Type of templates to remove
  */
 void tm_record_remove_all_templates(struct ipfix_template_mgr *tm, struct ipfix_template_mgr_record *tmr, int type)
 {
+	(void) tm;
 	MSG_DEBUG(msg_module, "Removing all %stemplates", (type == TM_TEMPLATE) ? "" : "option ");
 	int i;
 	for (i=0; i < tmr->max_length; i++) {
@@ -539,6 +587,7 @@ void tm_record_remove_all_templates(struct ipfix_template_mgr *tm, struct ipfix_
 /**
  * \brief Destroy Template Manager's record
  *
+ * \param[in] tm Template Manager
  * \param[in] tmr Template Manager's record
  */
 void tm_record_destroy(struct ipfix_template_mgr *tm, struct ipfix_template_mgr_record *tmr)
@@ -576,7 +625,7 @@ struct ipfix_template_mgr *tm_create() {
 /**
  * \brief Destroy global template manager
  *
- * \para[in] tm Template Manager
+ * \param[in] tm Template Manager
  */
 void tm_destroy(struct ipfix_template_mgr *tm)
 {

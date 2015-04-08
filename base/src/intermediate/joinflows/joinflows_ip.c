@@ -130,6 +130,8 @@ struct joinflows_processor {
 	int type;
 	bool add_orig_odid;
 	struct source *src;
+	struct metadata *metadata;
+	uint16_t metadata_index;
 };
 
 /* TODO!!!!!!!!*/
@@ -147,6 +149,8 @@ struct joinflows_processor {
  */
 int records_compare(struct ipfix_template_record *first, int lenf, struct ipfix_template_record *second, int lens, uint32_t odid)
 {
+	(void) odid;
+
 	if (first == NULL || second == NULL) {
 		return 1;
 	}
@@ -185,13 +189,19 @@ struct mapped_template *updated_templ(struct ipfix_template_record *orig_rec, in
 
 	/* Allocate memory for updated template */
 	new_mapped = malloc(sizeof(struct mapped_template));
-	if (new_mapped == NULL) {
+	if (!new_mapped) {
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 		return NULL;
 	}
 
 	new_rec = calloc(1, rec_len + 4);
-	memcpy(new_rec, orig_rec, rec_len);
+	if (!new_rec) {
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+		free(new_mapped);
+		return NULL;
+	}
 
+	memcpy(new_rec, orig_rec, rec_len);
 	new_mapped->reclen = rec_len;
 
 	/**
@@ -307,7 +317,8 @@ struct mapping *mapping_create(struct mapping_header *map, uint32_t orig_odid, u
 	struct mapping *new_map;
 
 	new_map = malloc(sizeof(struct mapping));
-	if (new_map == NULL) {
+	if (!new_map) {
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 		return NULL;
 	}
 
@@ -345,7 +356,8 @@ struct mapping *mapping_create(struct mapping_header *map, uint32_t orig_odid, u
 struct mapping *mapping_copy(struct mapping *orig_map, uint32_t orig_odid, uint16_t orig_tid)
 {
 	struct mapping *new_map = calloc(1, sizeof(struct mapping));
-	if (new_map == NULL) {
+	if (!new_map) {
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 		return NULL;
 	}
 
@@ -585,6 +597,13 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 		for (join = curr->children; join != NULL; join = join->next) {
 			to = (char *) xmlGetProp(curr, (const xmlChar *) "to");
 			new_map = calloc(1, sizeof(struct mapping_header));
+			if (!new_map) {
+				MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+				xmlFree(to);
+				free(conf);
+				return -1;
+			}
+
 			new_map->free_tid = 256;
 			new_map->new_odid = atoi(to);
 			new_map->next = conf->mappings;
@@ -594,10 +613,25 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 				if (!xmlStrcmp(from->content, (const xmlChar *) "*")) {
 					if (!conf->default_source) {
 						conf->default_source = calloc(1, sizeof(struct source));
+						if (!conf->default_source) {
+							MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+							xmlFree(to);
+							free(new_map);
+							free(conf);
+							return -1;
+						}
 					}
 					src = conf->default_source;
 				} else {
 					src = calloc(1, sizeof(struct source));
+					if (!src) {
+						MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+						xmlFree(to);
+						free(new_map);
+						free(conf);
+						return -1;
+					}
+
 					src->next = conf->sources;
 					conf->sources = src;
 				}
@@ -672,8 +706,12 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
 void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
 {
 	struct joinflows_processor *proc = (struct joinflows_processor *) data;
+	(void) templ;
 
 	memcpy(proc->msg + proc->offset, rec, rec_len);
+	proc->metadata[proc->metadata_index].record.record = proc->msg + proc->offset;
+	proc->metadata[proc->metadata_index].record.length = rec_len;
+
 	proc->offset += rec_len;
 	proc->length += rec_len;
 
@@ -681,7 +719,10 @@ void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, voi
 		memcpy(proc->msg + proc->offset, &(proc->orig_odid), 4);
 		proc->offset += 4;
 		proc->length += 4;
+		proc->metadata[proc->metadata_index].record.length += 4;
 	}
+
+	proc->metadata_index++;
 }
 
 /**
@@ -704,6 +745,7 @@ struct source *joinflows_get_source_by_mapping(struct joinflows_ip_config *conf,
 				MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
 				return NULL;
 			}
+
 			/* Fill in structure */
 			new_src->mapping = aux_map;
 			new_src->new_odid = aux_map->new_odid;
@@ -749,7 +791,8 @@ struct source *joinflows_get_source(struct joinflows_ip_config *conf, uint32_t o
  * \brief Update input_info structure
  *
  * \param[in] src Source structure
- * \param[in] inpu_info Original input_info structure
+ * \param[in] input_info Original input_info structure
+ * \param[in] records Number of flow records
  * \return Sequence number of new message
  */
 uint32_t joinflows_update_input_info(struct source *src, struct input_info *input_info, int records)
@@ -758,9 +801,19 @@ uint32_t joinflows_update_input_info(struct source *src, struct input_info *inpu
 	if (src->mapping->input_info == NULL) {
 		if (input_info->type == SOURCE_TYPE_IPFIX_FILE) {
 			src->mapping->input_info = calloc(1, sizeof(struct input_info_file));
+			if (!src->mapping->input_info) {
+				MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+				return 0;
+			}
+
 			memcpy(src->mapping->input_info, input_info, sizeof(struct input_info_file));
 		} else {
 			src->mapping->input_info = calloc(1, sizeof(struct input_info_network));
+			if (!src->mapping->input_info) {
+				MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+				return 0;
+			}
+
 			memcpy(src->mapping->input_info, input_info, sizeof(struct input_info_network));
 		}
 		src->mapping->input_info->odid = src->new_odid;
@@ -836,6 +889,9 @@ int intermediate_process_message(void *config, void *message)
 	proc.src = src;
 	proc.trecords = 0;
 	new_msg->pkt_header = (struct ipfix_header *) proc.msg;
+	new_msg->live_profile = msg->live_profile;
+	new_msg->metadata = msg->metadata;
+	msg->metadata = NULL;
 
 	/* Process templates */
 	proc.type = TM_TEMPLATE;
@@ -883,6 +939,10 @@ int intermediate_process_message(void *config, void *message)
 	new_msg->opt_templ_set[otsets] = NULL;
 
 	proc.orig_odid = htonl(orig_odid);
+	proc.metadata = new_msg->metadata;
+	proc.metadata_index = 0;
+	uint16_t metadata_index = 0;
+
 	for (i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
 		templ = msg->data_couple[i].data_template;
 		if (!templ) {
@@ -890,7 +950,7 @@ int intermediate_process_message(void *config, void *message)
 		}
 
 		map = mapping_lookup(src->mapping, orig_odid, templ->template_id, templ->template_type);
-		if (map == NULL) {
+		if (!map) {
 			MSG_WARNING(msg_module, "[%u] %d not found, something is wrong!", orig_odid, templ->template_id);
 			continue;
 		}
@@ -912,6 +972,14 @@ int intermediate_process_message(void *config, void *message)
 		new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
 		new_msg->data_couple[new_i].data_set->header.flowset_id = htons(new_msg->data_couple[new_i].data_template->template_id);
 		
+		/* Update templates in metadata */
+		while (metadata_index < msg->data_records_count &&
+			   metadata_index < proc.metadata_index &&
+			   new_msg->metadata[metadata_index].record.templ == templ) {
+			new_msg->metadata[metadata_index].record.templ = map->new_templ->templ;
+			metadata_index++;
+		}
+
 		/* Move to the next data_couple in new message */
 		new_i++;
 	}

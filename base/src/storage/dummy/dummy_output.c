@@ -130,6 +130,8 @@ int storage_init(char *params, void **config)
 int store_packet(void *config, const struct ipfix_message *ipfix_msg,
 	 const struct ipfix_template_mgr *template_mgr)
 {
+	(void) ipfix_msg;
+	(void) template_mgr;
 	struct dummy_config *conf = (struct dummy_config*) config;
 	usleep(conf->delay);
 	return 0;
@@ -137,9 +139,9 @@ int store_packet(void *config, const struct ipfix_message *ipfix_msg,
 
 int store_now(const void *config)
 {
+	(void) config;
 	return 0;
 }
-
 
 /**
  * \brief Remove storage plugin.

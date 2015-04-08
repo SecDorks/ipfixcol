@@ -47,6 +47,26 @@
 /** Identifier to MSG_* macros */
 static char *msg_module = "ipfix_message";
 
+/* Field offsets */
+struct offset_field {
+	uint16_t offset_index;
+	uint16_t id;
+	uint16_t length;
+};
+
+/* IPFIX ID <-> OFFSET ID mapping */
+static struct offset_field offsets[] = {
+	/* OFFSET ID, IPFIX_ID, LENGTH */
+	{ OF_OCTETS,	1,	8  },
+	{ OF_PACKETS,	2,	8  },
+	{ OF_PROTOCOL,	4,	1  },
+	{ OF_SRCPORT,	7,	2  },
+	{ OF_DSTPORT,	11,	2  },
+	{ OF_SRCIPV4,	8,	4  },
+	{ OF_DSTIPV4,	12,	4  },
+	{ OF_SRCIPV6,	27,	16 },
+	{ OF_DSTIPV6,	28,	16 }
+};
 
 /* some auxiliary functions for extracting data of exact length */
 #define read8(ptr) (*((uint8_t *) (ptr)))
@@ -195,7 +215,6 @@ int message_get_data(uint8_t **dest, uint8_t *source, int len)
 	return 0;
 }
 
-
 /**
  * \brief Set data to IPFIX message.
  *
@@ -211,12 +230,11 @@ int message_set_data(uint8_t *dest, uint8_t *source, int len)
 	return 0;
 }
 
-
 /**
  * \brief Get offset where next data record starts
  *
  * \param[in] data_record data record
- * \param[in] template template for data record
+ * \param[in] tmplt template for data record
  * \return offset of next data record in data set
  */
 uint16_t get_next_data_record_offset(uint8_t *data_record, struct ipfix_template *tmplt)
@@ -270,7 +288,7 @@ uint16_t get_next_data_record_offset(uint8_t *data_record, struct ipfix_template
  * \brief Get pointers to start of the Data Records in specific Data Set
  *
  * \param[in] data_set data set to work with
- * \param[in] template template for data set
+ * \param[in] tmplt template for data set
  * \return array of pointers to start of the Data Records in Data Set
  */
 uint8_t **get_data_records(struct ipfix_data_set *data_set, struct ipfix_template *tmplt)
@@ -519,10 +537,35 @@ int data_record_field_offset(uint8_t *data_record, struct ipfix_template *templa
  */
 uint8_t *data_record_get_field(uint8_t *record, struct ipfix_template *templ, uint32_t enterprise, uint16_t id, int *data_length)
 {
+	int offset_id = OF_COUNT;
+
+	if (enterprise == 0) {
+		/* Check whether we have offset field for this ID */
+		for (offset_id = 0; offset_id < OF_COUNT; ++offset_id) {
+			if (id == offsets[offset_id].id) {
+				break;
+			}
+		}
+
+		/* If offset is already known, use it */
+		if (offset_id != OF_COUNT && templ->offsets[offset_id] > 0) {
+			if (data_length) {
+				*data_length = offsets[offset_id].length;
+			}
+
+			return (uint8_t *) record + templ->offsets[offset_id];
+		}
+	}
+
 	int offset = data_record_field_offset(record, templ, enterprise, id, data_length);
 
 	if (offset < 0) {
 		return NULL;
+	}
+
+	/* Store offset for future lookup */
+	if (offset_id != OF_COUNT) {
+		templ->offsets[offset_id] = offset;
 	}
 
 	return (uint8_t *) record + offset;
@@ -689,11 +732,78 @@ void message_free_metadata(struct ipfix_message *msg)
 {
 	for (uint16_t i = 0; i < msg->data_records_count; ++i) {
 		/* Free profiles */
-		if (msg->metadata[i].profiles) {
-			free(msg->metadata[i].profiles);
+		if (msg->metadata[i].channels) {
+			free(msg->metadata[i].channels);
 		}
 	}
 	
 	/* Free metadata structure */
 	free(msg->metadata);
 }
+
+struct metadata *message_copy_metadata(struct ipfix_message *src)
+{
+	struct metadata *metadata = calloc(src->data_records_count, sizeof(struct metadata));
+	if (!metadata) {
+		MSG_ERROR(msg_module, "Not enough memory (%s:%d)", __FILE__, __LINE__);
+		return NULL;
+	}
+
+	for (uint16_t i = 0; i < src->data_records_count; ++i) {
+		metadata[i].srcAS = src->metadata[i].srcAS;
+		metadata[i].dstAS = src->metadata[i].dstAS;
+		memcpy(metadata[i].srcName, src->metadata[i].srcName, 32);
+		memcpy(metadata[i].dstName, src->metadata[i].dstName, 32);
+		metadata[i].srcCountry = src->metadata[i].srcCountry;
+		metadata[i].dstCountry = src->metadata[i].dstCountry;
+		metadata[i].record = src->metadata[i].record;
+
+		if (src->metadata[i].channels == NULL) {
+			continue;
+		}
+
+		uint16_t channels = 0;
+		while (src->metadata[i].channels[channels]) {
+			channels++;
+		}
+
+		metadata[i].channels = calloc(channels + 1, sizeof(void*));
+		if (!metadata) {
+			MSG_ERROR(msg_module, "Not enough memory (%s:%d)", __FILE__, __LINE__);
+			free(metadata);
+			return NULL;
+		}
+
+		for (uint16_t index = 0; index < channels; ++index) {
+			metadata[i].channels[index] = src->metadata[i].channels[index];
+		}
+	}
+
+	return metadata;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

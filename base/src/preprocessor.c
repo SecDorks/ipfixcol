@@ -42,6 +42,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#include "configurator.h"
 #include "preprocessor.h"
 #include "data_manager.h"
 #include "queues.h"
@@ -53,6 +54,8 @@
 static char *msg_module = "preprocessor";
 
 static struct ring_buffer *preprocessor_out_queue = NULL;
+
+static configurator *global_config = NULL;
 
 /* Sequence number counter for each ODID */
 struct odid_info {
@@ -219,6 +222,16 @@ void preprocessor_set_output_queue(struct ring_buffer *out_queue)
 }
 
 /**
+ * \brief Set new configurator
+ *
+ * \param[in] conf configurator
+ */
+void preprocessor_set_configurator(configurator *conf)
+{
+	global_config = conf;
+}
+
+/**
  * \brief Returns pointer to preprocessors output queue.
  */
 struct ring_buffer *get_preprocessor_output_queue()
@@ -347,7 +360,7 @@ static int preprocessor_process_one_template(void *tmpl, int max_len, int type,
 		}
 	} else {
 		/* template already exists */
-		MSG_WARNING(msg_module, "[%u] %s ID %i already exists; rewriting...", key->odid,
+		MSG_DEBUG(msg_module, "[%u] %s ID %i already exists; rewriting...", key->odid,
 				(type==TM_TEMPLATE) ? "Template" : "Options template", template->template_id);
 		template = tm_update_template(template_mgr, tmpl, max_len, type, key);
 	}
@@ -383,7 +396,7 @@ void fill_metadata(uint8_t *rec, int rec_len, struct ipfix_template *templ, void
 	/* Allocate space for metadata */
 	if (mdata_max == 0) {
 		mdata_max = 75;
-		msg->metadata = malloc(mdata_max * sizeof(struct metadata));
+		msg->metadata = calloc(mdata_max, sizeof(struct metadata));
 		if (!msg->metadata) {
 			MSG_ERROR(msg_module, "Not enough memory (%s:%d)", __FILE__, __LINE__);
 			mdata_max = 0;
@@ -399,20 +412,18 @@ void fill_metadata(uint8_t *rec, int rec_len, struct ipfix_template *templ, void
 			MSG_ERROR(msg_module, "Not enough memory (%s:%d)", __FILE__, __LINE__);
 			return;
 		}
-		
+	
 		msg->metadata = new_mdata;
+		memset(&(msg->metadata[mdata_max]), 0, mdata_max * sizeof(struct metadata));
+
 		mdata_max *= 2;
 	}
 	
 	/* Fill metadata */
+	msg->live_profile = (global_config) ? config_get_current_profiles(global_config) : NULL;
 	msg->metadata[msg->data_records_count].record.record = rec;
 	msg->metadata[msg->data_records_count].record.length = rec_len;
 	msg->metadata[msg->data_records_count].record.templ = templ;
-	msg->metadata[msg->data_records_count].profiles = NULL;
-	msg->metadata[msg->data_records_count].srcAS = 0;
-	msg->metadata[msg->data_records_count].dstAS = 0;
-	msg->metadata[msg->data_records_count].srcCountry = 0;
-	msg->metadata[msg->data_records_count].dstCountry = 0;
 	
 	msg->data_records_count++;
 }
@@ -538,6 +549,11 @@ void preprocessor_parse_msg (void* packet, int len, struct input_info* input_inf
 	if (source_status == SOURCE_STATUS_CLOSED) {
 		/* Inform intermediate plugins and output manager about closed input */
 		msg = calloc(1, sizeof(struct ipfix_message));
+		if (!msg) {
+			MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+			return;
+		}
+
 		msg->input_info = input_info;
 		msg->source_status = source_status;
 		odid_info_remove_source(input_info->odid);

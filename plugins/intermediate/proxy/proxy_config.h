@@ -67,7 +67,7 @@
 
 #include "proxy.h"
 
-#define DEFAULT_STAT_INTERVAL   20
+#define DEFAULT_STAT_INTERVAL   0
 #define HTTP_FIELD_WORKING_SIZE 65
 #define NFV9_CONVERSION_PEN     0xFFFFFFFF
 #define TEMPL_MAX_LEN           100000

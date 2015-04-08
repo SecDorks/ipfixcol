@@ -141,8 +141,8 @@ void Table::aggregateWithFunctions(const columnVector& aggregateColumns, const c
 	}
 	
 	/* Create select clause */
-	std::string select;
 	bool flows = false;
+	std::string select;
 	for (auto name: cols) {
 		int begin = name.find_first_of('(') + 1;
 		int end = name.find_first_of(')');
@@ -151,9 +151,12 @@ void Table::aggregateWithFunctions(const columnVector& aggregateColumns, const c
 			select += name + " as " + tmp + ", ";
 		} else {
 			flows = true;
-			select += "count(*) as flows, ";
 		}
 	}
+
+	/* Add aggregation */
+	select += "count(*) as flows, ";
+
 	select = select.substr(0, select.length() - 1);
 	
 	/* Create table */
@@ -301,6 +304,11 @@ void Table::doQuery()
 		ibis::table *tmpTable = this->table;
 		this->table = this->table->select(this->select.c_str(), this->usedFilter->getFilter().c_str());
 		
+		/* Check that we have valid table */
+		if (!this->table) {
+			throw std::runtime_error("Select '"+ this->select + "' with filter '"+ this->usedFilter->getFilter() +"' failed");
+		}
+
 		/* do order by only on valid result */
 		if (this->table && this->table->nRows() && !this->orderColumns.empty()) {
 			/* transform the column names to table names */
