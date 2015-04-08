@@ -901,9 +901,9 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
                      * Check whether specified name server is an IP address. In case of a hostname, it
                      * has to be resolved.
                      */
-                    if (ares_inet_pton(AF_INET, name_server_str, &ns->addr.addr4) > 0) {
+                    if (inet_pton(AF_INET, name_server_str, &ns->addr.addr4) > 0) {
                         ns->family = AF_INET;
-                    } else if (ares_inet_pton(AF_INET6, name_server_str, &ns->addr.addr6) > 0) {
+                    } else if (inet_pton(AF_INET6, name_server_str, &ns->addr.addr6) > 0) {
                         ns->family = AF_INET6;
                     } else {
                         struct hostent *hostent = gethostbyname(name_server_str);
