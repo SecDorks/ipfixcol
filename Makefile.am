@@ -14,7 +14,9 @@ SUBDIRS = base \
 	plugins/storage/json \
 	plugins/input/nfdump \
 	plugins/intermediate/geoip \
+	plugins/intermediate/httpfieldmerge \
 	plugins/intermediate/profiler \
 	plugins/intermediate/profile_stats \
+	plugins/intermediate/proxy \
 	plugins/intermediate/stats \
 	plugins/intermediate/uid
