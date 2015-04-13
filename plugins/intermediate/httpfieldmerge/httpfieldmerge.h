@@ -18,8 +18,9 @@
  *
  * HTTP-related fields from the following vendors are currently supported:
  *
- *     - INVEA-TECH,    PEN: 39499
- *     - ntop,          PEN: 35632
+ *     - Masaryk University,    PEN: 16982
+ *     - INVEA-TECH,            PEN: 39499
+ *     - ntop,                  PEN: 35632
  *
  * The unified set of fields uses PEN '44913'.
  *
@@ -72,6 +73,9 @@
 #define inveaHttpHost   { 39499,   1, "inveaHttpHost" }
 #define inveaHttpUrl    { 39499,   2, "inveaHttpUrl" }
 
+#define masarykHttpHost { 39499,   1, "masarykHttpHost" }
+#define masarykHttpUrl  { 39499,   2, "masarykHttpUrl" }
+
 #define ntopHttpHost    { 35632, 187, "ntopHttpHost" }
 #define ntopHttpUrl     { 35632, 180, "ntopHttpUrl" }
 
@@ -86,6 +90,9 @@ struct ipfix_entity {
 
 static struct ipfix_entity invea_fields[] = {
     inveaHttpHost, inveaHttpUrl
+};
+static struct ipfix_entity masaryk_fields[] = {
+    masarykHttpHost, masarykHttpUrl
 };
 static struct ipfix_entity ntop_fields[] = {
     ntopHttpHost, ntopHttpUrl
@@ -103,6 +110,10 @@ struct field_mapping {
 static struct field_mapping invea_field_mappings[] = {
     {inveaHttpHost, rsHttpHost},
     {inveaHttpUrl,  rsHttpUrl}
+};
+static struct field_mapping masaryk_field_mappings[] = {
+    {masarykHttpHost, rsHttpHost},
+    {masarykHttpUrl,  rsHttpUrl}
 };
 static struct field_mapping ntop_field_mappings[] = {
     {ntopHttpHost,  rsHttpHost},

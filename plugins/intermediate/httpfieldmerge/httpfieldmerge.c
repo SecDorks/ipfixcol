@@ -18,8 +18,9 @@
  *
  * HTTP-related fields from the following vendors are currently supported:
  *
- *     - INVEA-TECH,    PEN: 39499
- *     - ntop,          PEN: 35632
+ *     - Masaryk University,    PEN: 16982
+ *     - INVEA-TECH,            PEN: 39499
+ *     - ntop,                  PEN: 35632
  *
  * The unified set of fields uses PEN '44913'.
  *
@@ -76,6 +77,9 @@ static char *msg_module = "httpfieldmerge";
 static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
     struct ipfix_entity *fields = NULL;
     switch (pen) {
+        case 16982:     fields = (struct ipfix_entity *) masaryk_fields;
+                        break;
+
         case 35632:     fields = (struct ipfix_entity *) ntop_fields;
                         break;
 
@@ -101,6 +105,9 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
 static struct field_mapping* pen_to_field_mappings (uint32_t pen) {
     struct field_mapping *mapping = NULL;
     switch (pen) {
+        case 16982:     mapping = (struct field_mapping *) masaryk_field_mappings;
+                        break;
+
         case 35632:     mapping = (struct field_mapping *) ntop_field_mappings;
                         break;
 
@@ -187,6 +194,14 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntop_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", template_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
+            }
+        }
+
+        // Check enterprise-specific IEs from Masaryk University
+        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+            if (template_record_get_field(record, masaryk_fields[i].pen, masaryk_fields[i].element_id, NULL) != NULL) {
+                MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from Masaryk University in template (template ID: %u)", template_id);
+                templ_stats->http_fields_pen = masaryk_fields[i].pen;
             }
         }
 
