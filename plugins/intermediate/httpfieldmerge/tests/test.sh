@@ -86,7 +86,7 @@ else
 		./create_internal.sh
 		INTERNAL=$(readlink -fe -- configs/internalcfg.xml)
 		if [ -z $INTERNAL ]; then
-			echo "Cannot create config/internalcfg.xml"
+			echo "Cannot create configs/internalcfg.xml"
 			exit 1
 		fi
 	fi
