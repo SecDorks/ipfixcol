@@ -65,16 +65,16 @@
 
 #include "uthash.h"
 
-#define NFV9_CONVERSION_PEN 0xFFFFFFFF
-#define TEMPL_MAX_LEN 100000
-#define TARGET_FIELD_PEN 44913
+#define NFV9_CONVERSION_PEN     0xFFFFFFFF
+#define TEMPL_MAX_LEN           100000
+#define TARGET_FIELD_PEN        44913
 
 // IPFIX Information Elements used within this plugin (PEN, ID, name)
 #define inveaHttpHost   { 39499,   1, "inveaHttpHost" }
 #define inveaHttpUrl    { 39499,   2, "inveaHttpUrl" }
 
-#define masarykHttpHost { 39499,   1, "masarykHttpHost" }
-#define masarykHttpUrl  { 39499,   2, "masarykHttpUrl" }
+#define masarykHttpHost { 16982, 501, "masarykHttpHost" }
+#define masarykHttpUrl  { 16982, 502, "masarykHttpUrl" }
 
 #define ntopHttpHost    { 35632, 187, "ntopHttpHost" }
 #define ntopHttpUrl     { 35632, 180, "ntopHttpUrl" }
