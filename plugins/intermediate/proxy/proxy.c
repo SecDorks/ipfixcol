@@ -1159,8 +1159,7 @@ int intermediate_process_message (void *config, void *message) {
     }
 
     /*
-     * Check for invalid message length (may be used as part of an attack). Please note
-     * the following:
+     * Check for invalid message length (may be used as part of an attack). Please note:
      *      1) msg->pkt_header->length is uint16_t, which can never become more than MSG_MAX_LENGTH.
      *      2) We use '>=' in the comparison to avoid compiler warnings about the condition always being false.
      */

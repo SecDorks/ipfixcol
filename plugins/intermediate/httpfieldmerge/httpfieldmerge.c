@@ -416,9 +416,20 @@ int intermediate_process_message (void *config, void *message) {
     }
 
     /*
-     * Allocate memory for new message
+     * Check for invalid message length (may be used as part of an attack). Please note:
+     *      1) msg->pkt_header->length is uint16_t, which can never become more than MSG_MAX_LENGTH.
+     *      2) We use '>=' in the comparison to avoid compiler warnings about the condition always being false.
      */
-    uint16_t new_msg_length = ntohs(msg->pkt_header->length);
+    uint16_t old_msg_length = ntohs(msg->pkt_header->length);
+    if (old_msg_length >= MSG_MAX_LENGTH) {
+        MSG_WARNING(msg_module,
+                "Length of received IPFIX message is invalid (%X); skipping IPFIX message...", msg->pkt_header->length);
+        pass_message(conf->ip_config, msg);
+        return 0;
+    }
+
+    // Allocate memory for new message
+    uint16_t new_msg_length = old_msg_length;
     proc.msg = calloc(1, new_msg_length);
     if (!proc.msg) {
         MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
