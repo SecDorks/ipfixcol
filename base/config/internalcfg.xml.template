@@ -100,15 +100,5 @@
 		<file>@pkgdatadir@/plugins/ipfixcol-hooks-inter.so</file>
 		<threadName>hooks_inter</threadName>
 	</intermediatePlugin>
-	<intermediatePlugin>
-		<name>httpfieldmerge</name>
-		<file>@pkgdatadir@/plugins/ipfixcol-httpfieldmerge-inter.so</file>
-		<threadName>httpfieldmerge</threadName>
-	</intermediatePlugin>
-	<intermediatePlugin>
-		<name>proxy</name>
-		<file>@pkgdatadir@/plugins/ipfixcol-proxy-inter.so</file>
-		<threadName>proxy</threadName>
-	</intermediatePlugin>
 
 </ipfixcol>
