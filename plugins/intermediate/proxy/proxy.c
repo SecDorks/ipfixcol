@@ -1159,10 +1159,24 @@ int intermediate_process_message (void *config, void *message) {
     }
 
     /*
+     * Check for invalid message length (may be used as part of an attack). Please note
+     * the following:
+     *      1) msg->pkt_header->length is uint16_t, which can never become more than MSG_MAX_LENGTH.
+     *      2) We use '>=' in the comparison to avoid compiler warnings about the condition always being false.
+     */
+    uint16_t old_msg_length = ntohs(msg->pkt_header->length);
+    if (old_msg_length >= MSG_MAX_LENGTH) {
+        MSG_WARNING(msg_module,
+                "Length of received IPFIX message is invalid (%X); skipping IPFIX message...", msg->pkt_header->length);
+        pass_message(conf->ip_config, msg);
+        return 0;
+    }
+
+    /*
      * Allocate memory for new message (every record is 4 bytes in size). We allocate enough memory
      * here for both IPv4 and IPv6 fields (see '* 2' in statement below).
      */
-    uint16_t new_msg_length = ntohs(msg->pkt_header->length)
+    uint16_t new_msg_length = old_msg_length
             + orig_fields_count * 2 * 4 * (msg->templ_records_count + msg->opt_templ_records_count)
             + msg->data_records_count * 12  // IPv4 orig fields (2 + 4 + 2 + 4)
             + msg->data_records_count * 36; // IPv6 orig fields (2 + 16 + 2 + 16)
