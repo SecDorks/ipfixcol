@@ -1141,7 +1141,7 @@ int intermediate_process_message (void *config, void *message) {
 
     // Check whether source was closed
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
-        MSG_WARNING(msg_module, "Source closed; skipping IPFIX message...");
+        // MSG_WARNING(msg_module, "Source closed; skipping IPFIX message...");
         pass_message(conf->ip_config, msg);
         return 0;
     }

@@ -12,9 +12,11 @@ ipfixcol_proxy_inter_la_LIBADD = -lrt
 
 ipfixcol_proxy_inter_la_SOURCES = ares_util.c proxy_stat_thread.c proxy.c
 
+.PHONY: clean-local
 clean-local:
 	rm -rf RPMBUILD
 
+.PHONY: install-data-hook
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
 		ipfixconf add -c "$(internalcfg)" -p m -n proxy -t proxy -s "$(sofile)" -f; \
