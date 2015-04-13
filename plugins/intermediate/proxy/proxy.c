@@ -1108,7 +1108,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
     *config = conf;
 
-    MSG_NOTICE(msg_module, "Successfully initialized");
+    MSG_NOTICE(msg_module, "Plugin initialization completed successfully");
 
     // Plugin successfully initialized
     return 0;
