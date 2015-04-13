@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 pluginsdir = $(pkgdatadir)/plugins
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
-sofile = $(pluginsdir)/ipfixcol-proxy-inter.so
+sofile = $(pluginsdir)/ipfixcol-httpfieldmerge-inter.so
 
 AM_CPPFLAGS = -I$(top_srcdir)/headers
 
