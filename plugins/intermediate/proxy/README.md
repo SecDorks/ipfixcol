@@ -74,8 +74,8 @@ Example:
         <proxyPort>3128</proxyPort>
         <proxyPort>8080</proxyPort>
 
-        <!-- Interval (in seconds) in which plugins statistics are calculated and shown -->
-        <statInterval>10</statInterval>
+        <!-- Interval (in seconds) in which plugins statistics are calculated and shown (0: disabled) -->
+        <!-- <statInterval>20</statInterval> -->
 
         <!-- Name servers, for overriding system-wide name servers specified in /etc/resolv.conf -->
         <!-- <nameServer>8.8.8.8</nameServer> -->

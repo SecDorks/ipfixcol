@@ -40,8 +40,10 @@ There are also external plugins that are installed separately
 
 ###<a name="exmed"></a> External intermediate plugins
 * **[geoip](plugins/intermediate/geoip)** - adds country codes into the metadata structure
+* **[httpfieldmerge](plugins/intermediate/httpfieldmerge)** - merges HTTP-related fields from various vendors into one unified set
 * **[profiler](plugins/intermediate/profiler)** - fills metadata informations about profiles and channels
 * **[profile_stats](plugins/intermediate/profile_stats)** - counts statistic per profile and channel
+* **[proxy](plugins/intermediate/proxy)** - 'translates' flows related to Web proxies
 * **[stats](plugins/intermediate/stats)** - counts statistics per ODID
 * **[uid](plugins/intermediate/uid)** - fills user identity information
 
@@ -87,7 +89,7 @@ More info in it's [README](tools/fbitmerge/)
 Whole framework can be build at once with
 
 ```sh
-autoreconf -i 
+autoreconf -if
 ```
 to generate configure script from configure.ac, Makefile.in from Makefile.am and install missing files.
 
@@ -114,17 +116,15 @@ make rpm
 ```
 
 ##<a name="fastbit"></a> FastBit
-Plugins and tools that uses FastBit file format need FasBit library installed. IPFIXcol framework uses it's own fork of FastBit library to keep compatibility.
-
-IPFIXcol's FastBit library can be found [here](https://github.com/CESNET/libfastbit).
+Plugins and tools that uses FastBit file format need FasBit library installed. IPFIXcol framework uses it's own fork of the FastBit library for maintaining compatibility. The fork can be found [here](https://github.com/SecDorks/libfastbit).
 
 ##<a name="contact"></a> Contact us
 ###<a name="bug"></a> Reporting bugs
 
-If you find any bug you can report it into [issue tracker](https://github.com/CESNET/ipfixcol/issues) here on GitHub.
+If you find any bug you can report it into [issue tracker](https://github.com/SecDorks/ipfixcol/issues) here on GitHub.
 
 ###<a name="mailing"></a> Forum
 
-if you have some questions or if you just want to share your ideas about useful features etc., please use [this forum](https://groups.google.com/forum/#!forum/ipfixcol).
+In case you have some questions or if you just want to share your ideas about useful features etc., please use [this forum](https://groups.google.com/forum/#!forum/ipfixcol).
 
 [Back to Top](#top)
