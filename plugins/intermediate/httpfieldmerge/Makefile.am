@@ -12,11 +12,18 @@ ipfixcol_httpfieldmerge_inter_la_LIBADD = -lrt
 
 ipfixcol_httpfieldmerge_inter_la_SOURCES = httpfieldmerge.h httpfieldmerge.c uthash.h
 
+.PHONY: clean-local
 clean-local:
 	rm -rf RPMBUILD
 
+.PHONY: install-data-hook
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
 		ipfixconf add -c "$(internalcfg)" -p m -n httpfieldmerge -t httpfieldmerge -s "$(sofile)" -f; \
 	fi
+
+.PHONY: test
+test:
+	$(MAKE) $(ACLOCAL_AMFLAGS)
+	(cd tests/ && ./test.sh) || exit 1
 
