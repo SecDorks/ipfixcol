@@ -5,6 +5,7 @@ pluginsdir = $(datadir)/ipfixcol/plugins
 
 sofile = $(pluginsdir)/ipfixcol-profiler-inter.so
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
+ipfixconf = $(DESTDIR)/$(exec_prefix)/bin/ipfixconf
 
 plugins_LTLIBRARIES = ipfixcol-profiler-inter.la
 ipfixcol_profiler_inter_la_LDFLAGS = -module -avoid-version -shared 
@@ -50,5 +51,5 @@ clean-local:
 
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
-	    ipfixconf add -c "$(internalcfg)" -p m -n profiler -t profiler -s "$(sofile)" -f; \
+	    $(ipfixconf) add -c "$(internalcfg)" -p m -n profiler -t profiler -s "$(sofile)" -f; \
 	fi

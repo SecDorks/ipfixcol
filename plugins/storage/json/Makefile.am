@@ -6,9 +6,9 @@ AM_CPPFLAGS += -I$(top_srcdir)/pugixml $(SISO_CPPFLAGS)
 AM_LDFLAGS += $(SISO_LDFLAGS) -module -avoid-version -shared 
  
 pluginsdir = $(datadir)/ipfixcol/plugins
-
 sofile = $(pluginsdir)/ipfixcol-json-output.so
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
+ipfixconf = $(DESTDIR)/$(exec_prefix)/bin/ipfixconf
 
 plugins_LTLIBRARIES = ipfixcol-json-output.la
 #ipfixcol_json_output_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version -shared 
@@ -56,7 +56,7 @@ clean-local:
 
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
-	    ipfixconf add -c "$(internalcfg)" -p o -n json -t json -s "$(sofile)" -f; \
+	    $(ipfixconf) add -c "$(internalcfg)" -p o -n json -t json -s "$(sofile)" -f; \
 	fi
 
 protocols.cpp: /etc/protocols

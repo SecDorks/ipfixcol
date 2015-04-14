@@ -4,6 +4,7 @@ pluginsdir = $(datadir)/ipfixcol/plugins
 
 sofile = $(pluginsdir)/ipfixcol-fastbit_compression-output.so
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
+ipfixconf = $(DESTDIR)/$(exec_prefix)/bin/ipfixconf
 
 plugins_LTLIBRARIES = ipfixcol-fastbit_compression-output.la
 ipfixcol_fastbit_compression_output_la_LDFLAGS = -module -avoid-version -shared
@@ -45,11 +46,11 @@ clean-local:
 
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
-	    ipfixconf add -c "$(internalcfg)" -p o -n fastbit_compression -t fastbitc -s "$(sofile)" -f; \
+	    $(ipfixconf) add -c "$(internalcfg)" -p o -n fastbit_compression -t fastbitc -s "$(sofile)" -f; \
 	fi
 
 uninstall-hook:
 	@if [ -f "$(internalcfg)" ]; then \
-	    ipfixconf remove -c "$(internalcfg)" -p o -n fastbit_compression; \
+	    $(ipfixconf) remove -c "$(internalcfg)" -p o -n fastbit_compression; \
 	fi
 
