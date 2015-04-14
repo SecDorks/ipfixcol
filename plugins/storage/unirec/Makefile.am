@@ -5,6 +5,7 @@ pluginsdir = $(datadir)/ipfixcol/plugins
 
 sofile = $(pluginsdir)/ipfixcol-unirec-output.so
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
+ipfixconf = $(DESTDIR)/$(exec_prefix)/bin/ipfixconf
 
 plugins_LTLIBRARIES = ipfixcol-unirec-output.la
 ipfixcol_unirec_output_la_LDFLAGS = -module -avoid-version -shared -ltrap
@@ -51,6 +52,5 @@ clean-local:
 
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
-	    ipfixconf add -c "$(internalcfg)" -p o -n unirec -t unirec -s "$(sofile)" -f; \
+	    $(ipfixconf) add -c "$(internalcfg)" -p o -n unirec -t unirec -s "$(sofile)" -f; \
 	fi
-

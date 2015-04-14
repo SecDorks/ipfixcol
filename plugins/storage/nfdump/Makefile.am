@@ -4,9 +4,9 @@ SUBDIRS = pugixml
 AM_CPPFLAGS = -I$(top_srcdir)/pugixml
 
 pluginsdir = $(datadir)/ipfixcol/plugins
-
 sofile = $(pluginsdir)/ipfixcol-nfdump-output.so
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
+ipfixconf = $(DESTDIR)/$(exec_prefix)/bin/ipfixconf
 
 LICENSE = ipfixcol-nfdump-output.txt
 plugins_DATA = ipfixcol-nfdump-output.txt
@@ -52,6 +52,5 @@ clean-local:
 
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
-	    ipfixconf add -c "$(internalcfg)" -p o -n nfdump -t nfdump -s "$(sofile)" -f; \
+	    $(ipfixconf) add -c "$(internalcfg)" -p o -n nfdump -t nfdump -s "$(sofile)" -f; \
 	fi
-
