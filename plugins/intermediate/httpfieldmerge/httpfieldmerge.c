@@ -161,7 +161,12 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     uint16_t template_id = ntohs(record->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
     if (templ_stats == NULL) { // Do only if it was not done (successfully) before
-        templ_stats = malloc(sizeof(struct templ_stats_elem_t));
+        templ_stats = calloc(1, sizeof(struct templ_stats_elem_t));
+        if (!templ_stats) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            return;
+        }
+
         templ_stats->id = template_id;
         templ_stats->http_fields_pen = 0;
         templ_stats->http_fields_pen_determined = 0;
@@ -260,6 +265,11 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     // Replace enterprise-specific fields by vendors with 'unified' fields:
     //     0. Copy original template record
     new_rec = calloc(1, rec_len);
+    if (!new_rec) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
     memcpy(new_rec, old_rec, rec_len);
 
     //     1. Find HTTP fields (if present) and replace them
@@ -323,7 +333,13 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct templ_stats_elem_t *templ_stats_new;
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id_new, sizeof(uint16_t), templ_stats_new);
     if (!templ_stats_new) {
-        templ_stats_new = malloc(sizeof(struct templ_stats_elem_t));
+        templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
+        if (!templ_stats_new) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            free(new_rec);
+            return;
+        }
+
         templ_stats_new->id = template_id_new;
         templ_stats_new->http_fields_pen = TARGET_FIELD_PEN;
         templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
@@ -363,9 +379,9 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipfix_template_mgr *template_mgr, void **config) {
     struct httpfieldmerge_config *conf;
 
-    conf = (struct httpfieldmerge_config *) malloc(sizeof(*conf));
+    conf = (struct httpfieldmerge_config *) calloc(1, sizeof(*conf));
     if (!conf) {
-        MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
         return -1;
     }
 

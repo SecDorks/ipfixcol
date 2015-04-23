@@ -312,7 +312,12 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     uint16_t template_id = ntohs(record->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
     if (templ_stats == NULL) { // Do only if it was not done (successfully) before
-        templ_stats = malloc(sizeof(struct templ_stats_elem_t));
+        templ_stats = calloc(1, sizeof(struct templ_stats_elem_t));
+        if (!templ_stats) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            return;
+        }
+
         templ_stats->id = template_id;
         templ_stats->http_fields_pen = 0;
         templ_stats->http_fields_pen_determined = 0;
@@ -530,7 +535,13 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats_new->ipv4 = templ_stats->ipv4;
         templ_stats_new->ipv6 = templ_stats->ipv6;
     } else {
-        templ_stats_new = malloc(sizeof(struct templ_stats_elem_t));
+        templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
+        if (!templ_stats_new) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            free(new_rec);
+            return;
+        }
+
         templ_stats_new->id = template_id_new;
         templ_stats_new->http_fields_pen = templ_stats->http_fields_pen;
         templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
@@ -801,7 +812,12 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     ares_proc->orig_rec_len = rec_len;
     ares_proc->port_number = port_number;
     ares_proc->proxy_port_field_id = proxy_port_field_id;
-    ares_proc->http_hostname = malloc(strlen(http_hostname) + 1); // '+1' is for null-terminating character
+    ares_proc->http_hostname = calloc(strlen(http_hostname) + 1, sizeof(char)); // '+1' is for null-terminating character
+    if (!ares_proc->http_hostname) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
     strncpy_safe(ares_proc->http_hostname, http_hostname, strlen(http_hostname) + 1);
 
     // Perform asynchronous domain name resolution
@@ -830,9 +846,9 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     xmlNodePtr node;
     uint8_t i;
 
-    conf = (struct proxy_config *) malloc(sizeof(*conf));
+    conf = (struct proxy_config *) calloc(1, sizeof(*conf));
     if (!conf) {
-        MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
         return -1;
     }
 
@@ -896,9 +912,9 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
                 // Only consider this node if its value is non-empty and features at least one dot
                 if (strlen(name_server_str) > 0 && strstr(name_server_str, ".") != NULL) {
-                    struct ares_addr_node *ns = malloc(sizeof(struct ares_addr_node));
+                    struct ares_addr_node *ns = calloc(1, sizeof(struct ares_addr_node));
                     if (!ns) {
-                        MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
+                        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
                         ares_destroy_name_server_list(conf->name_servers);
                         xmlFree(name_server_str);
                         xmlFreeDoc(doc);
@@ -969,7 +985,12 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             conf->proxy_ports = default_proxy_ports;
         } else {
             // Parse XML configuration: parse proxy ports
-            conf->proxy_ports = malloc(conf->proxy_port_count * sizeof(int));
+            conf->proxy_ports = calloc(conf->proxy_port_count, sizeof(int));
+            if (!conf->proxy_ports) {
+                MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+                return -1;
+            }
+
             node = config_root;
             i = 0;
             while (node != NULL) {
