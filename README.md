@@ -123,6 +123,10 @@ Plugins and tools that uses FastBit file format need FasBit library installed. I
 
 If you find any bug you can report it into [issue tracker](https://github.com/SecDorks/ipfixcol/issues) here on GitHub.
 
+###<a name="contribution"></a> Contributing to IPFIXcol
+
+We are open to contributions to IPFIXcol which improve the stability and functionality of the collector. To keep the code readable and consistent, please adhere to the [coding style](coding_style.md) document. 
+
 ###<a name="mailing"></a> Forum
 
 In case you have some questions or if you just want to share your ideas about useful features etc., please use [this forum](https://groups.google.com/forum/#!forum/ipfixcol).
