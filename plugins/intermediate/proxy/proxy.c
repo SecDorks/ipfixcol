@@ -72,6 +72,9 @@
 #include "proxy_config.h"
 #include "proxy_stat_thread.h"
 
+// API version constant
+IPFIXCOL_API_VERSION;
+
 // Identifier for MSG_* macros
 static char *msg_module = "proxy";
 

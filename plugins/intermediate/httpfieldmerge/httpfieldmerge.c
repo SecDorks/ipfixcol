@@ -64,6 +64,9 @@
 
 #include "httpfieldmerge.h"
 
+// API version constant
+IPFIXCOL_API_VERSION;
+
 // Identifier for MSG_* macros
 static char *msg_module = "httpfieldmerge";
 
