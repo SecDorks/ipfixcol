@@ -806,6 +806,11 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     // Prepare processing structure
     struct proxy_ares_processor *ares_proc = (struct proxy_ares_processor *) calloc(1, sizeof(struct proxy_ares_processor));
+    if (!ares_proc) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
     ares_proc->proc = proc;
     ares_proc->templ = templ;
     ares_proc->orig_rec = rec;
@@ -815,6 +820,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     ares_proc->http_hostname = calloc(strlen(http_hostname) + 1, sizeof(char)); // '+1' is for null-terminating character
     if (!ares_proc->http_hostname) {
         MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        free(ares_proc);
         return;
     }
 
@@ -957,8 +963,6 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
                     }
 
                     ns->next = NULL;
-
-                    // FIXME Check free(hostent);
                 }
 
                 xmlFree(name_server_str);
@@ -988,6 +992,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             conf->proxy_ports = calloc(conf->proxy_port_count, sizeof(int));
             if (!conf->proxy_ports) {
                 MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+                free(conf);
                 return -1;
             }
 
