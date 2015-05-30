@@ -488,7 +488,7 @@ int intermediate_process_message (void *config, void *message) {
     proc.key = tm_key_create(info->odid, conf->ip_id, 0); // Template ID (0) will be overwritten in a later stage
     proc.plugin_conf = config;
 
-    // Process templates
+    // Process template sets
     MSG_DEBUG(msg_module, "Processing template sets...");
     proc.type = TM_TEMPLATE;
     for (i = 0; i < MSG_MAX_TEMPLATES && msg->templ_set[i]; ++i) {
@@ -520,7 +520,7 @@ int intermediate_process_message (void *config, void *message) {
     // Demarcate end of templates in set
     new_msg->templ_set[tsets] = NULL;
 
-    // Process option templates
+    // Process option template sets
     MSG_DEBUG(msg_module, "Processing option template sets...");
     proc.type = TM_OPTIONS_TEMPLATE;
     for (i = 0; i < MSG_MAX_OTEMPLATES && msg->opt_templ_set[i]; ++i) {
@@ -546,7 +546,7 @@ int intermediate_process_message (void *config, void *message) {
     // Demarcate end of option templates in set
     new_msg->opt_templ_set[otsets] = NULL;
 
-    // Process data records
+    // Process data sets
     MSG_DEBUG(msg_module, "Processing data sets...");
     for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
         templ = msg->data_couple[i].data_template;
@@ -598,7 +598,7 @@ int intermediate_process_message (void *config, void *message) {
 
         /*
          * We use a second loop index for cases where a data_couple does not feature a template,
-         * so not 'gaps' will be present in the list of data sets.
+         * so no 'gaps' will be present in the list of data sets.
          */
         ++new_i;
     }

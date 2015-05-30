@@ -2066,13 +2066,6 @@
     <!-- INVEA-TECH -->
     <element>
         <enterprise>39499</enterprise>
-        <id>4</id>
-        <name>HTTPRequestType</name>
-        <dataType>unsigned32</dataType>
-        <semantic></semantic>
-    </element>
-    <element>
-        <enterprise>39499</enterprise>
         <id>1</id>
         <name>HTTPRequestHost</name>
         <dataType>string</dataType>
@@ -2087,22 +2080,22 @@
     </element>
     <element>
         <enterprise>39499</enterprise>
-        <id>21</id>
-        <name>HTTPRequestAgentID</name>
-        <dataType>unsigned32</dataType>
-        <semantic></semantic>
-    </element>
-    <element>
-        <enterprise>39499</enterprise>
-        <id>20</id>
-        <name>HTTPRequestAgent</name>
+        <id>3</id>
+        <name>HTTPRequestReferer</name>
         <dataType>string</dataType>
         <semantic></semantic>
     </element>
     <element>
         <enterprise>39499</enterprise>
-        <id>3</id>
-        <name>HTTPRequestReferer</name>
+        <id>4</id>
+        <name>HTTPRequestType</name>
+        <dataType>unsigned32</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>10</id>
+        <name>HTTPResponseType</name>
         <dataType>string</dataType>
         <semantic></semantic>
     </element>
@@ -2115,9 +2108,72 @@
     </element>
     <element>
         <enterprise>39499</enterprise>
-        <id>10</id>
-        <name>HTTPResponseType</name>
+        <id>20</id>
+        <name>HTTPRequestAgent</name>
         <dataType>string</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>21</id>
+        <name>HTTPRequestAgentID</name>
+        <dataType>unsigned32</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>22</id>
+        <name>HTTPRequestAgentOS</name>
+        <dataType>unsigned16</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>23</id>
+        <name>HTTPRequestAgentOSMajor</name>
+        <dataType>unsigned16</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>24</id>
+        <name>HTTPRequestAgentOSMinor</name>
+        <dataType>unsigned16</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>25</id>
+        <name>HTTPRequestAgentOSBuild</name>
+        <dataType>unsigned16</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>26</id>
+        <name>HTTPRequestAgentApp</name>
+        <dataType>unsigned16</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>27</id>
+        <name>HTTPRequestAgentAppMajor</name>
+        <dataType>unsigned16</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>28</id>
+        <name>HTTPRequestAgentAppMinor</name>
+        <dataType>unsigned16</dataType>
+        <semantic></semantic>
+    </element>
+    <element>
+        <enterprise>39499</enterprise>
+        <id>29</id>
+        <name>HTTPRequestAgentAppBuild</name>
+        <dataType>unsigned16</dataType>
         <semantic></semantic>
     </element>
     <element>
