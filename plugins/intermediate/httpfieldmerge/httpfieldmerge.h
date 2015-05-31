@@ -145,7 +145,7 @@ struct httpfieldmerge_config {
 
 struct httpfieldmerge_processor {
     uint8_t *msg;
-    uint16_t offset;
+    uint16_t allocated_msg_length, offset;
     uint32_t length, odid;
     int type;
     

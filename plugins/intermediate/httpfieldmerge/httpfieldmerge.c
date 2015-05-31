@@ -363,6 +363,13 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     (void) templ;
 
+    // Check whether we will exceed the allocated memory boundary
+    if (proc->offset + rec_len > proc->allocated_msg_length) {
+        MSG_ERROR(msg_module, "Not enough memory allocated for processing full message (allocated: %u, current offset: %u)",
+                proc->allocated_msg_length, proc->offset);
+        return;
+    }
+
     // Copy original data record
     memcpy(proc->msg + proc->offset, rec, rec_len);
     proc->offset += rec_len;
@@ -464,6 +471,7 @@ int intermediate_process_message (void *config, void *message) {
 
     // Allocate memory for new message
     uint16_t new_msg_length = old_msg_length;
+    proc.allocated_msg_length = new_msg_length;
     proc.msg = calloc(1, new_msg_length);
     if (!proc.msg) {
         MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
