@@ -321,10 +321,8 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     uint16_t template_id_new = ntohs(new_rec->template_id);
     proc->key->tid = template_id_new;
     new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
-    if (new_templ) {
-        MSG_NOTICE(msg_module, "Added new template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
-    } else {
-        MSG_ERROR(msg_module, "Failed to add template to template manager");
+    if (!new_templ) {
+        MSG_ERROR(msg_module, "Failed to add template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
     }
 
     //     3. Add new record to message
