@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<refentry 
+		xmlns="http://docbook.org/ns/docbook" 
+		xmlns:xlink="http://www.w3.org/1999/xlink" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.w3.org/1999/xlink http://docbook.org/xml/5.0/xsd/xlink.xsd
+			http://docbook.org/ns/docbook http://docbook.org/xml/5.0/xsd/docbook.xsd"
+		version="5.0" xml:lang="en">
+	<info>
+		<copyright>
+			<year>2015</year>
+			<holder>CESNET, z.s.p.o.</holder>
+		</copyright>
+		<date>1 June 2015</date>
+		<authorgroup>
+			<author>
+				<personname>
+					<firstname>Michal</firstname>
+					<surname>Kozubik</surname>
+				</personname>
+				<email>kozubik@cesnet.cz</email>
+				<contrib>developer</contrib>
+			</author>
+		</authorgroup>
+		<orgname>The Liberouter Project</orgname>
+	</info>
+
+	<refmeta>
+		<refentrytitle>ipfixcol</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo otherclass="manual" class="manual">Profiles management tool</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+                <refname>profilesdaemon</refname>
+		<refpurpose>Profiles management tool</refpurpose>
+	</refnamediv>
+	
+	<refsynopsisdiv>
+		<cmdsynopsis>
+                        <command>profilesdaemon</command>
+			<arg>-hVd</arg>
+			<arg>-p port</arg>
+			<arg>-s socket</arg>
+			<arg>-c file</arg>
+			<arg>-v level</arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<simpara>
+						<command>profilesdaemon</command> is a tool for profiles management and configuration distribution.
+						Tool provides API for profiles.xml modification (adding/editing/removing profiles and channels).
+						It uses UNIX datagram socket for accepting commands and sending responses in JSON format.
+						Profilesdaemon can distribute profiles configuration to multiple IPFIX collectors.
+						Tool accepts new collectors on TCP network socket and keeps connection opened.
+						Configuration is sent to all active collectors after performing some changes.
+						IPFIX collector must be running with profiler intermediate plugin.
+		</simpara>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<variablelist>
+			<varlistentry>
+				<term>-h</term>
+				<term>--help</term>
+				<listitem>
+					<simpara>Show help and exit.</simpara>
+				</listitem>
+			</varlistentry>
+			
+			<varlistentry>
+				<term>-V</term>
+				<term>--version</term>
+				<listitem>
+					<simpara>Show version and exit.</simpara>
+				</listitem>
+			</varlistentry>
+			
+			<varlistentry>
+				<term>-p <replaceable class="parameter">number</replaceable></term>
+				<term>--port=<replaceable class="parameter">number</replaceable></term>
+				<listitem>
+										<simpara>Port number for collectors (for config distribution)</simpara>
+				</listitem>
+			</varlistentry>
+			
+			<varlistentry>
+				<term>-d</term>
+				<term>--daemonize</term>
+				<listitem>
+					<simpara>
+						Run as a daemon
+					</simpara>
+				</listitem>
+			</varlistentry>
+			
+			<varlistentry>
+				<term>-s <replaceable class="parameter">path</replaceable></term>
+				<term>--socket=<replaceable class="parameter">path</replaceable></term>
+				<listitem>
+					<simpara>
+						Path to the control socket for adding/removing profiles etc.
+					</simpara>
+					<simpara>Allowed suffixes: B, k, K, m, M, g, G (default: M)</simpara>
+				</listitem>
+			</varlistentry>
+		
+			<varlistentry>
+				<term>-v <replaceable class="parameter">level</replaceable></term>
+				<term>--verbose=<replaceable class="parameter">level</replaceable></term>
+				<listitem>
+					<simpara>Set verbosity level.</simpara>
+				</listitem>
+			</varlistentry>
+						
+			<varlistentry>
+				<term>-c <replaceable class="parameter">path</replaceable></term>
+				<term>--config=<replaceable class="parameter">path</replaceable></term>
+				<listitem>
+					<simpara>Path to the profiles.xml configuration</simpara>
+				</listitem>
+			</varlistentry>
+						
+		</variablelist>
+	</refsect1>
+
+	<refsect1>
+		<title>Examples</title>
+	</refsect1>
+
+
+	<refsect1>
+		<title>See Also</title>
+		<para></para>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<citerefentry><refentrytitle>fbitdump</refentrytitle><manvolnum>1</manvolnum></citerefentry>,
+						<citerefentry><refentrytitle>fbitdump.xml</refentrytitle><manvolnum>5</manvolnum></citerefentry>,
+						<citerefentry><refentrytitle>fbitmerge</refentrytitle><manvolnum>1</manvolnum></citerefentry>,
+						<citerefentry><refentrytitle>ipfixcol-fastbit-output</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+					</term>
+					<listitem>
+						<simpara>Man pages</simpara>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<link xlink:href="http://www.liberouter.org/technologies/ipfixcol/">http://www.liberouter.org/technologies/ipfixcol/</link>
+					</term>
+					<listitem>
+						<para>Project Homepage</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<link xlink:href="http://www.liberouter.org">http://www.liberouter.org</link>
+					</term>
+					<listitem>
+						<para>Liberouter web page</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<email>tmc-support@cesnet.cz</email>
+					</term>
+					<listitem>
+						<para>Support mailing list</para>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+</refentry>

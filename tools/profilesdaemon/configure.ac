@@ -37,24 +37,22 @@
 #
 
 AC_PREREQ([2.60])
-# Process this file with autoconf to produce a configure script.
-AC_INIT([ipfixcol-profiler-inter], [0.0.2])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
-LT_PREREQ([2.2])
-LT_INIT([dlopen disable-static])
 
-AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SRCDIR([profiler.cpp])
+# Process this file with autoconf to produce a configure script.
+AC_INIT([profilesdaemon], [0.1.0])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability subdir-objects])
+AC_CONFIG_SRCDIR([src/profilesdaemon.cpp])
 AC_CONFIG_HEADERS([config.h])
+
+RELEASE=1
+AC_SUBST(RELEASE)
 
 # Initialization
 : ${CXXFLAGS=""}
 AM_CXXFLAGS="-Wall -O2"
 AC_LANG(C++)
-CXX="g++"
 
-RELEASE=1
-AC_SUBST(RELEASE)
+CXX="g++"
 
 # Set user name and email for packaging purposes 
 LBR_SET_CREDENTIALS
@@ -62,12 +60,12 @@ LBR_SET_DISTRO([redhat])
 
 ############################ Check for programs ################################
 
+# Check for rpmbuild
+AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild)
+
 # Check for doxygen
 AC_CHECK_PROG(DOXYGEN, doxygen, doxygen)
-AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
-
-# Check for rpmbuil
-AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild)
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n $DOXYGEN])
 
 # Check for xsltproc
 LBR_CHECK_XSLTPROC
@@ -75,54 +73,47 @@ LBR_CHECK_XSLTPROC
 # Check for standard programs
 AC_PROG_CXX
 AC_PROG_INSTALL
-AC_PROG_MAKE_SET
+AC_PROG_RANLIB
 
-AC_LANG([C++])
+# Check for latest g++ standard
 LBR_SET_CXXSTD
 AM_CXXFLAGS="$AM_CXXFLAGS $CXXSTD"
 
+############################ Check for libraries ###############################
+
+### dynamic linker ###
+AC_SEARCH_LIBS([dlopen], [dl],,
+        AC_MSG_ERROR([Required library dl missing]))
+
+############################# Check for files ##################################
+
 ###################### Check for configure parameters ##########################
+
 AC_ARG_ENABLE([debug], 
         AC_HELP_STRING([--enable-debug],[turn on more debugging options]),
-        [AM_CXXFLAGS="$AM_CXXFLAGS -Wextra -g"])
+        [AM_CPPFLAGS="$AM_CPPFLAGS -DDEBUG"
+        AM_CXXFLAGS="$AM_CXXFLAGS -Wextra -g -O0"])
 
 AC_ARG_ENABLE([doc],
         AC_HELP_STRING([--disable-doc],[disable documentation building]))
 AM_CONDITIONAL([HAVE_DOC], [test "$enable_doc" != "no"])
 
-############################ Check for libraries ###############################
-libsisodir="$srcdir/../../../base/src/utils/libsiso/"
-my_save_ldflags="$LDFLAGS"
-AS_IF([test -d "$libsisodir.libs"],
-	[AC_MSG_NOTICE([])
-	LDFLAGS="$LDFLAGS -L$libsisodir.libs"
-	AC_SEARCH_LIBS([siso_create],[siso], [
-		SISO_LDFLAGS="-L$libsisodir.libs"
-		SISO_CPPFLAGS="-I$libsisodir"
-		HAVE_SISO="yes"
-		AC_MSG_NOTICE([Using libsiso from $libsisodir])],
-		[HAVE_SISO="no"])],
-	[AC_SEARCH_LIBS([siso_create],[siso], [HAVE_SISO="yes"], [HAVE_SISO="no"]])
-)
-LDFLAGS="$my_save_ldflags"
-AS_IF([test "$HAVE_SISO" = "no"], AC_MSG_ERROR([Required library siso missing]))
-AC_SUBST([SISO_CPPFLAGS])
-AC_SUBST([SISO_LDFLAGS])
-
+# Substitute compiler flags
+AC_SUBST([AM_CPPFLAGS])
+AC_SUBST([AM_CXXFLAGS])
 ######################### Checks for header files ##############################
-AC_CHECK_HEADERS([float.h netinet/in.h stddef.h stdint.h stdlib.h string.h wchar.h])
 
-# Check whether we can find headers dir in relative path (git repository)
-AS_IF([test -d $srcdir/../../../base/headers], 
-	[CPPFLAGS+=" -I$srcdir/../../../base/headers"]
-)
+AC_HEADER_RESOLV
 
-AC_CHECK_HEADERS([ipfixcol.h], , AC_MSG_ERROR([ipfixcol.h header missing. Please install ipfixcol-devel package]), [AC_INCLUDES_DEFAULT])
+AC_CHECK_HEADERS([iostream dirent.h unistd.h vector map fstream \
+	stdint.h stdlib.h string.h])
 
-######## Checks for typedefs, structures, and compiler characteristics #########
-AC_HEADER_STDBOOL
+######## Checks for typedefs, structures, and compiler characteristics #########AC_HEADER_STDBOOL
 AC_C_INLINE
+AC_TYPE_INT16_T
 AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_INT8_T
 AC_TYPE_SIZE_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
@@ -133,38 +124,26 @@ AC_CHECK_TYPES([ptrdiff_t])
 ######################## Checks for library functions ##########################
 AC_FUNC_ERROR_AT_LINE
 AC_CHECK_FUNCS([malloc])
+AC_FUNC_MKTIME
 AC_CHECK_FUNCS([realloc])
 AC_FUNC_STRTOD
-AC_CHECK_FUNCS([floor memmove mkdir strchr strstr strtol strtoul])
-AC_CHECK_DECL([be64toh], [AC_DEFINE([HAVE_BE64TOH], [1],
-                               [Define if macro be64toh exists.])],,
-							   [[#include <endian.h>]])
+AC_CHECK_FUNCS([memmove memset])
+
 
 ############################### Set output #####################################
-# Substitute compiler flags
-AC_SUBST([AM_CXXFLAGS])
-AC_SUBST([AM_CPPFLAGS])
-AC_SUBST([AM_LDFLAGS])
-
-AC_SUBST(RPMBUILD)
-if test -z "$RPMBUILD"; then
-	AC_MSG_WARN([Due to missing rpmbuild you will not able to generate RPM package.])
-fi
-
-AC_SUBST(XSLTPROC)
-if test -z "$XSLTPROC"; then
-	AC_MSG_WARN([Due to missing xsltproc you will not able to generate MAN pages.])
-fi
 
 # generate output
 AC_CONFIG_FILES([Makefile
-		doxygen/Makefile
-		ipfixcol-profiler-inter.spec])
-AM_COND_IF(HAVE_DOXYGEN, AC_CONFIG_FILES([doxygen/doxyfile]))
+				src/Makefile
+				man/Makefile
+				doc/Makefile
+                                profilesdaemon.spec])
 
-# tools makefiles
+AM_COND_IF(HAVE_DOXYGEN, AC_CONFIG_FILES([doc/doxyconf]))
 
 AC_OUTPUT
+
+# Print warings
 
 AS_IF([test -z "$RPMBUILD"], AC_MSG_WARN([Due to missing rpmbuild you will not able to generate RPM package.]))
 
@@ -180,11 +159,12 @@ echo "
   $PACKAGE_NAME version $PACKAGE_VERSION
   Prefix........: $prefix
   Distribution..: $DISTRO
+  Debug build...: ${enable_debug:-no}
   C++ Compiler..: $CXX $AM_CXXFLAGS $CXXFLAGS $AM_CPPFLAGS $CPPFLAGS
-  Linker........: $AM_LDFLAGS $LDFLAGS $LIBS
+  Linker........: $LDFLAGS $LIBS
   rpmbuild......: ${RPMBUILD:-NONE}
   Build doc.....: ${enable_doc:-yes}
-  Doxygen.......: ${DOXYGEN:-NONE}
   xsltproc......: ${XSLTPROC:-NONE}
   xsltmanstyle..: $XSLTMANSTYLE
+  Doxygen.......: ${DOXYGEN:-NONE}
 "
