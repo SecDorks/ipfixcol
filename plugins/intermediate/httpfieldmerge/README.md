@@ -25,8 +25,9 @@ set of fields. The following fields are currently supported:
 
 HTTP-related fields from the following vendors are currently supported:
 
- - INVEA-TECH,    PEN: 39499
- - ntop,          PEN: 35632
+ - Masaryk University,  PEN: 16982
+ - INVEA-TECH,          PEN: 39499
+ - ntop,                PEN: 35632
 
 The unified set of fields uses PEN '44913'.
 
