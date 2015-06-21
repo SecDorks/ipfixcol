@@ -41,7 +41,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
@@ -85,7 +84,7 @@ static int regexp_asterisk(char *regexp, char *string)
 	/* make copy of original string */
 	aux_regexp = (char *) malloc(strlen(regexp) + 1);
 	if (aux_regexp == NULL) {
-		MSG_ERROR(msg_module, "Not enough memory");
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 		return -1;
 	}
 
@@ -173,7 +172,7 @@ char **utils_files_from_path(char *path)
 	
 	dir = opendir(dirname);
 	if (dir == NULL) {
-		MSG_ERROR(msg_module, "Unable to open input file(s)\n");
+		MSG_ERROR(msg_module, "Unable to open input file(s); directory cannot be found (%s)\n", dirname);
 		free(dirname);
 		return NULL;
 	}
@@ -183,22 +182,21 @@ char **utils_files_from_path(char *path)
 
 	entry = (struct dirent *) malloc(len);
 	if (entry == NULL) {
-		MSG_ERROR(msg_module, "Not enough memory");
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 		goto err_file;
 	}
 
 	array_length = NUMBER_OF_INPUT_FILES;
-	input_files = (char **) malloc(array_length * sizeof(char *));
+	input_files = (char **) calloc(array_length, sizeof(char *));
 	if (input_files == NULL) {
-		MSG_ERROR(msg_module, "Not enough memory");
+		MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 		goto err_file;
 	}
-	memset(input_files, 0, NUMBER_OF_INPUT_FILES);
 
 	do {
 		ret = readdir_r(dir, entry, &result);
 		if (ret != 0) {
-			MSG_ERROR(msg_module, "Error while reading directory %s\n", dirname);
+			MSG_ERROR(msg_module, "Error while reading directory '%s'\n", dirname);
 			goto err_file;
 		}
 		
@@ -218,7 +216,7 @@ char **utils_files_from_path(char *path)
 			if (inputf_index >= array_length - 1) {
 				input_files = realloc(input_files, array_length * 2);
 				if (input_files == NULL) {
-					MSG_ERROR(msg_module, "Not enough memory");
+					MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 					goto err_file;
 				}
 				array_length *= 2;
@@ -226,9 +224,10 @@ char **utils_files_from_path(char *path)
 
 			input_files[inputf_index] = (char *) malloc(strlen(entry->d_name) + strlen(dirname) + 2); /* 2 because of "/" and NULL*/
 			if (input_files[inputf_index] == NULL) {
-				MSG_ERROR(msg_module, "Not enough memory");
+				MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
 				goto err_file;
 			}
+
 			/* create path+filename string */
 			sprintf(input_files[inputf_index], "%s/%s", dirname, entry->d_name);
 
@@ -240,11 +239,11 @@ char **utils_files_from_path(char *path)
 				MSG_WARNING(msg_module, "Could not determine stats for '%s'", entry->d_name);
 				continue;
 			}
+
 			if (S_ISDIR(st.st_mode)) {
-				/* well, it is... damn */
 				free(input_files[inputf_index]);
 				input_files[inputf_index] = NULL;
-				MSG_WARNING(msg_module, "Input file %s is a directory; skipping...", entry->d_name);
+				MSG_WARNING(msg_module, "Input file '%s' is a directory; skipping...", entry->d_name);
 				continue;
 			}
 
@@ -294,7 +293,7 @@ char *utils_dir_from_path(char *path)
 /**
  * \brief Version of strncpy that ensures null-termination.
  */
-char *strncpy_safe (char *destination, const char *source, size_t num)
+char *strncpy_safe(char *destination, const char *source, size_t num)
 {
 	strncpy(destination, source, num);
 
@@ -309,10 +308,15 @@ char *strncpy_safe (char *destination, const char *source, size_t num)
  *
  * \return Converted integer value of the supplied String, INT_MAX otherwise.
  */
-int strtoi (const char* str, int base)
+int strtoi(const char* str, int base)
 {
 	char *end;
 	errno = 0;
+
+	if (str == NULL) {
+		return INT_MAX;
+	}
+	
 	const long ret_long = strtol(str, &end, base);
 	int ret_int;
 
