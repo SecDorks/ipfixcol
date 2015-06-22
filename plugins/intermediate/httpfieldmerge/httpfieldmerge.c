@@ -595,15 +595,6 @@ int intermediate_process_message (void *config, void *message) {
 
         data_set_process_records(msg->data_couple[i].data_set, templ, &data_processor, (void *) &proc);
 
-        /* Add padding bytes, if necessary */
-        if (proc.length % 4 != 0) {
-            int padding_length = 4 - (proc.length % 4);
-
-            memset(proc.msg + proc.offset, 0, padding_length);
-            proc.offset += padding_length;
-            proc.length += padding_length;
-        }
-
         new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
         new_msg->data_couple[new_i].data_set->header.flowset_id = htons(new_msg->data_couple[new_i].data_template->template_id);
 
