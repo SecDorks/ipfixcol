@@ -237,7 +237,6 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
     struct ipfix_template_record *new_rec;
-    struct ipfix_template *new_templ;
     uint8_t i;
 
     /* Get structure from hashmap that provides information about current template */
@@ -318,12 +317,17 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         }
     }
 
-    /* 2. Generate new template and store it in template manager */
-    uint16_t template_id_new = ntohs(new_rec->template_id);
-    proc->key->tid = template_id_new;
-    new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
-    if (!new_templ) {
-        MSG_ERROR(msg_module, "Failed to add template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
+    /* 2. Store it in template manager */
+    proc->key->tid = template_id;
+
+    if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
+        if (tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
+            MSG_ERROR(msg_module, "Failed to add template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
+        }
+    } else {
+        if (tm_update_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
+            MSG_ERROR(msg_module, "Failed to update template in template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
+        }
     }
 
     /* 3. Add new record to message */
@@ -333,7 +337,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
 
     /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
     struct templ_stats_elem_t *templ_stats_new;
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id_new, sizeof(uint16_t), templ_stats_new);
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats_new);
     if (!templ_stats_new) {
         templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
         if (!templ_stats_new) {
@@ -342,7 +346,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
             return;
         }
 
-        templ_stats_new->id = template_id_new;
+        templ_stats_new->id = template_id;
         templ_stats_new->http_fields_pen = TARGET_FIELD_PEN;
         templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
         HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats_new);
@@ -570,7 +574,7 @@ int intermediate_process_message (void *config, void *message) {
         proc.key->tid = templ->template_id;
         new_templ = tm_get_template(conf->tm, proc.key);
         if (!new_templ) {
-            // MSG_WARNING(msg_module, "Could not retrieve template from template manager (ODID: %u, IP ID: %u, template ID: %u)", info->odid, conf->ip_id, templ->template_id);
+            // MSG_ERROR(msg_module, "Could not retrieve template from template manager (ODID: %u, IP ID: %u, template ID: %u)", info->odid, conf->ip_id, templ->template_id);
             /* Assume that template was not modified by this plugin if new template was not registered in template manager */
             new_templ = templ;
         }
