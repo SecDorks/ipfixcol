@@ -64,10 +64,10 @@
 
 #include "httpfieldmerge.h"
 
-// API version constant
+/* API version constant */
 IPFIXCOL_API_VERSION;
 
-// Identifier for MSG_* macros
+/* Identifier for MSG_* macros */
 static char *msg_module = "httpfieldmerge";
 
 /**
@@ -159,11 +159,11 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
     (void) rec_len;
     int i;
 
-    // Determine IP versions used within this template
+    /* Determine IP versions used within this template */
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(record->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
-    if (templ_stats == NULL) { // Do only if it was not done (successfully) before
+    if (templ_stats == NULL) { /* Do only if it was not done (successfully) before */
         templ_stats = calloc(1, sizeof(struct templ_stats_elem_t));
         if (!templ_stats) {
             MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
@@ -174,13 +174,13 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats->http_fields_pen = 0;
         templ_stats->http_fields_pen_determined = 0;
 
-        // Store result in hashmap
+        /* Store result in hashmap */
         HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats);
     }
 
-    // Determine exporter PEN based on presence of certain enterprise-specific IEs
-    if (templ_stats->http_fields_pen_determined == 0) { // Do only if it was not done (successfully) before
-        // Check enterprise-specific IEs from INVEA-TECH
+    /* Determine exporter PEN based on presence of certain enterprise-specific IEs */
+    if (templ_stats->http_fields_pen_determined == 0) { /* Do only if it was not done (successfully) before */
+        /* Check enterprise-specific IEs from INVEA-TECH */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", template_id);
@@ -188,7 +188,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             }
         }
 
-        // Check enterprise-specific IEs from ntop
+        /* Check enterprise-specific IEs from ntop */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", template_id);
@@ -196,8 +196,9 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             }
         }
 
-        // Check enterprise-specific IEs from ntop (converted from NetFlow v9)
-        // https://github.com/CESNET/ipfixcol/issues/16
+        /* Check enterprise-specific IEs from ntop (converted from NetFlow v9)
+         * https://github.com/CESNET/ipfixcol/issues/16
+         */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntop_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", template_id);
@@ -205,7 +206,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             }
         }
 
-        // Check enterprise-specific IEs from Masaryk University
+        /* Check enterprise-specific IEs from Masaryk University */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, masaryk_fields[i].pen, masaryk_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from Masaryk University in template (template ID: %u)", template_id);
@@ -213,7 +214,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             }
         }
 
-        // Check enterprise-specific IEs from RS
+        /* Check enterprise-specific IEs from RS */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", template_id);
@@ -239,14 +240,14 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     struct ipfix_template *new_templ;
     uint8_t i;
 
-    // Get structure from hashmap that provides information about current template
+    /* Get structure from hashmap that provides information about current template */
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(old_rec->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
     if (templ_stats == NULL) {
         MSG_ERROR(msg_module, "Could not find entry '%u' in hashmap; using original template", template_id);
 
-        // Copy existing record to new message
+        /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
@@ -258,15 +259,15 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
      * or if template already uses the unified set of HTTP IEs.
      */
     if (templ_stats->http_fields_pen == 0 || templ_stats->http_fields_pen == TARGET_FIELD_PEN) {
-        // Copy existing record to new message
+        /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
         return;
     }
 
-    // Replace enterprise-specific fields by vendors with 'unified' fields:
-    //     0. Copy original template record
+    /* Replace enterprise-specific fields by vendors with 'unified' fields */
+    /* 0. Copy original template record */
     new_rec = calloc(1, rec_len);
     if (!new_rec) {
         MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
@@ -275,40 +276,40 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
 
     memcpy(new_rec, old_rec, rec_len);
 
-    //     1. Find HTTP fields (if present) and replace them
+    /* 1. Find HTTP fields (if present) and replace them */
     struct ipfix_entity *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
     struct field_mapping *field_mappings = pen_to_field_mappings(templ_stats->http_fields_pen);
     struct ipfix_entity *target_field;
     for (i = 0; i < vendor_fields_count; ++i) {
-        // Iterate over all fields in template record
+        /* Iterate over all fields in template record */
         uint8_t mapping_applied = 0;
         uint16_t count = 0, index = 0;
         while (count < ntohs(new_rec->count)
                 && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
-            // Apply field mapping if enterprise-specific fields have been found
+            /* Apply field mapping if enterprise-specific fields have been found */
             if (ntohs(new_rec->fields[index].ie.id) == (http_fields[i].element_id | 0x8000)) {
-                // Find mapping's target field
+                /* Find mapping's target field */
                 target_field = field_to_mapping_target(field_mappings, &http_fields[i]);
 
-                // Replace field ID
+                /* Replace field ID */
                 new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
 
                 mapping_applied = 1;
             }
 
-            // If there is a PEN stored for this IE, it comes just after the IE, before the next IE
+            /* If there is a PEN stored for this IE, it comes just after the IE, before the next IE */
             if (ntohs(new_rec->fields[index].ie.id) >> 15) {
                 ++index;
             }
 
             if (mapping_applied) {
-                // Replace PEN
+                /* Replace PEN */
                 new_rec->fields[index].enterprise_number = htonl(target_field->pen);
 
-                // Reset for next iteration
+                /* Reset for next iteration */
                 mapping_applied = 0;
 
-                // Skip looping over full set of fields, since every IE can exist only once
+                /* Skip looping over full set of fields, since every IE can exist only once */
                 break;
             }
 
@@ -317,7 +318,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         }
     }
 
-    //     2. Generate new template and store it in template manager
+    /* 2. Generate new template and store it in template manager */
     uint16_t template_id_new = ntohs(new_rec->template_id);
     proc->key->tid = template_id_new;
     new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
@@ -325,12 +326,12 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         MSG_ERROR(msg_module, "Failed to add template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
     }
 
-    //     3. Add new record to message
+    /* 3. Add new record to message */
     memcpy(proc->msg + proc->offset, new_rec, rec_len);
     proc->offset += rec_len;
     proc->length += rec_len;
 
-    // Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID)
+    /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
     struct templ_stats_elem_t *templ_stats_new;
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id_new, sizeof(uint16_t), templ_stats_new);
     if (!templ_stats_new) {
@@ -361,14 +362,14 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     (void) templ;
 
-    // Check whether we will exceed the allocated memory boundary
+    /* Check whether we will exceed the allocated memory boundary */
     if (proc->offset + rec_len > proc->allocated_msg_length) {
         MSG_ERROR(msg_module, "Not enough memory allocated for processing full message (allocated: %u, current offset: %u)",
                 proc->allocated_msg_length, proc->offset);
         return;
     }
 
-    // Copy original data record
+    /* Copy original data record */
     memcpy(proc->msg + proc->offset, rec, rec_len);
     proc->offset += rec_len;
     proc->length += rec_len;
@@ -398,14 +399,14 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->ip_id = ip_id;
     conf->tm = template_mgr;
 
-    // Initialize (empty) hashmap
+    /* Initialize (empty) hashmap */
     conf->templ_stats = NULL;
 
     *config = conf;
 
     MSG_NOTICE(msg_module, "Plugin initialization completed successfully");
 
-    // Plugin successfully initialized
+    /* Plugin successfully initialized */
     return 0;
 }
 
@@ -435,7 +436,7 @@ int intermediate_process_message (void *config, void *message) {
 
     MSG_DEBUG(msg_module, "Received IPFIX message...");
 
-    // Check whether source was closed
+    /* Check whether source was closed */
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
         // MSG_WARNING(msg_module, "Source closed; skipping IPFIX message...");
         pass_message(conf->ip_config, msg);
@@ -467,7 +468,7 @@ int intermediate_process_message (void *config, void *message) {
         return 0;
     }
 
-    // Allocate memory for new message
+    /* Allocate memory for new message */
     uint16_t new_msg_length = old_msg_length;
     proc.allocated_msg_length = new_msg_length;
     proc.msg = calloc(1, new_msg_length);
@@ -476,7 +477,7 @@ int intermediate_process_message (void *config, void *message) {
         return 1;
     }
 
-    // Allocate memory for new IPFIX message
+    /* Allocate memory for new IPFIX message */
     new_msg = calloc(1, sizeof(struct ipfix_message));
     if (!new_msg) {
         MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
@@ -484,17 +485,17 @@ int intermediate_process_message (void *config, void *message) {
         return 1;
     }
 
-    // Copy original IPFIX header
+    /* Copy original IPFIX header */
     memcpy(proc.msg, msg->pkt_header, IPFIX_HEADER_LENGTH);
     new_msg->pkt_header = (struct ipfix_header *) proc.msg;
     proc.offset = IPFIX_HEADER_LENGTH;
 
-    // Initialize processing structure
+    /* Initialize processing structure */
     proc.odid = msg->input_info->odid;
-    proc.key = tm_key_create(info->odid, conf->ip_id, 0); // Template ID (0) will be overwritten in a later stage
+    proc.key = tm_key_create(info->odid, conf->ip_id, 0); /* Template ID (0) will be overwritten in a later stage */
     proc.plugin_conf = config;
 
-    // Process template sets
+    /* Process template sets */
     MSG_DEBUG(msg_module, "Processing template sets...");
     proc.type = TM_TEMPLATE;
     for (i = 0; i < MSG_MAX_TEMPL_SETS && msg->templ_set[i]; ++i) {
@@ -505,54 +506,54 @@ int intermediate_process_message (void *config, void *message) {
          */
         template_set_process_records(msg->templ_set[i], proc.type, &templates_stat_processor, (void *) &proc);
 
-        // Add template set header, and update offset and length
+        /* Add template set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->templ_set[i]->header), 4);
         proc.offset += 4;
         proc.length = 4;
 
-        // Process all template set records
+        /* Process all template set records */
         template_set_process_records(msg->templ_set[i], proc.type, &templates_processor, (void *) &proc);
 
-        // Check whether a new template set was added by 'templates_processor'
-        if (proc.offset == prev_offset + 4) { // No new template set record was added
+        /* Check whether a new template set was added by 'templates_processor' */
+        if (proc.offset == prev_offset + 4) { /* No new template set record was added */
             proc.offset = prev_offset;
-        } else { // New template set was added; add it to data structure as well
+        } else { /* New template set was added; add it to data structure as well */
             new_msg->templ_set[tsets] = (struct ipfix_template_set *) ((uint8_t *) proc.msg + prev_offset);
             new_msg->templ_set[tsets]->header.length = htons(proc.length);
             tsets++;
         }
     }
 
-    // Demarcate end of templates in set
+    /* Demarcate end of templates in set */
     new_msg->templ_set[tsets] = NULL;
 
-    // Process option template sets
+    /* Process option template sets */
     MSG_DEBUG(msg_module, "Processing option template sets...");
     proc.type = TM_OPTIONS_TEMPLATE;
     for (i = 0; i < MSG_MAX_OTEMPL_SETS && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
 
-        // Add template set header, and update offset and length
+        /* Add template set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->opt_templ_set[i]->header), 4);
         proc.offset += 4;
         proc.length = 4;
 
         template_set_process_records((struct ipfix_template_set *) msg->opt_templ_set[i], proc.type, &templates_processor, (void *) &proc);
 
-        // Check whether a new options template set was added by 'templates_processor'
+        /* Check whether a new options template set was added by 'templates_processor' */
         if (proc.offset == prev_offset + 4) {
             proc.offset = prev_offset;
-        } else { // New options template set was added; add it to data structure as well
+        } else { /* New options template set was added; add it to data structure as well */
             new_msg->opt_templ_set[otsets] = (struct ipfix_options_template_set *) ((uint8_t *) proc.msg + prev_offset);
             new_msg->opt_templ_set[otsets]->header.length = htons(proc.length);
             otsets++;
         }
     }
 
-    // Demarcate end of option templates in set
+    /* Demarcate end of option templates in set */
     new_msg->opt_templ_set[otsets] = NULL;
 
-    // Process data sets
+    /* Process data sets */
     MSG_DEBUG(msg_module, "Processing data sets...");
     for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
         templ = msg->data_couple[i].data_template;
@@ -570,27 +571,27 @@ int intermediate_process_message (void *config, void *message) {
         new_templ = tm_get_template(conf->tm, proc.key);
         if (!new_templ) {
             // MSG_WARNING(msg_module, "Could not retrieve template from template manager (ODID: %u, IP ID: %u, template ID: %u)", info->odid, conf->ip_id, templ->template_id);
-            // Assume that template was not modified by this plugin if new template was not registered in template manager
+            /* Assume that template was not modified by this plugin if new template was not registered in template manager */
             new_templ = templ;
         }
 
-        // Add data set header, and update offset and length
+        /* Add data set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->data_couple[i].data_set->header), 4);
         proc.offset += 4;
         proc.length = 4;
 
-        // Update 'data_couple' by adjusting pointers to updated data structures
+        /* Update 'data_couple' by adjusting pointers to updated data structures */
         new_msg->data_couple[new_i].data_set = ((struct ipfix_data_set *) ((uint8_t *) proc.msg + proc.offset - 4));
         new_msg->data_couple[new_i].data_template = new_templ;
 
-        // Increase number of references to template
+        /* Increase number of references to template */
         new_templ->last_message = templ->last_message;
         new_templ->last_transmission = templ->last_transmission;
         tm_template_reference_inc(new_templ);
 
         data_set_process_records(msg->data_couple[i].data_set, templ, &data_processor, (void *) &proc);
 
-        // Add padding bytes, if necessary
+        /* Add padding bytes, if necessary */
         if (proc.length % 4 != 0) {
             int padding_length = 4 - (proc.length % 4);
 
@@ -609,10 +610,10 @@ int intermediate_process_message (void *config, void *message) {
         ++new_i;
     }
 
-    // Demarcate end of data records in set
+    /* Demarcate end of data records in set */
     new_msg->data_couple[new_i].data_set = NULL;
 
-    // Don't send empty IPFIX messages (i.e., message includes no templates, option templates, or data records)
+    /* Don't send empty IPFIX messages (i.e., message includes no templates, option templates, or data records) */
     if (proc.offset == IPFIX_HEADER_LENGTH) {
         MSG_WARNING(msg_module, "Empty IPFIX message detected; dropping message");
         free(proc.key);
@@ -622,7 +623,7 @@ int intermediate_process_message (void *config, void *message) {
         return 0;
     }
 
-    // Update IPFIX message length (in header)
+    /* Update IPFIX message length (in header) */
     new_msg->pkt_header->length = htons(proc.offset);
     new_msg->input_info = msg->input_info;
     new_msg->templ_records_count = msg->templ_records_count;
@@ -649,7 +650,7 @@ int intermediate_close (void *config) {
     struct httpfieldmerge_config *conf;
     conf = (struct httpfieldmerge_config *) config;
 
-    // Clean up templ_stats hashmap
+    /* Clean up templ_stats hashmap */
     struct templ_stats_elem_t *current_templ_stats, *tmp;
     HASH_ITER(hh, conf->templ_stats, current_templ_stats, tmp) {
         HASH_DEL(conf->templ_stats, current_templ_stats);

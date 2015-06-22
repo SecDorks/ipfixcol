@@ -69,7 +69,7 @@
 #define TEMPL_MAX_LEN           100000
 #define TARGET_FIELD_PEN        44913
 
-// IPFIX Information Elements used within this plugin (PEN, ID, name)
+/* IPFIX Information Elements used within this plugin (PEN, ID, name) */
 #define inveaHttpHost   { 39499,   1, "inveaHttpHost" }
 #define inveaHttpUrl    { 39499,   2, "inveaHttpUrl" }
 
@@ -127,7 +127,7 @@ struct templ_stats_elem_t {
     UT_hash_handle hh;              // Hash handle for internal hash functioning
 };
 
-// Stores plugin's internal configuration
+/* Stores plugin's internal configuration */
 struct httpfieldmerge_config {
     char *params;
     void *ip_config;
