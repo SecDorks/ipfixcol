@@ -1,5 +1,5 @@
 pluginsdir = $(pkgdatadir)/plugins
-AM_CPPFLAGS += -I$(top_srcdir)/headers $(TLS_CPPFLAGS) $(SFLOW_CPPFLAGS)
+AM_CPPFLAGS += -I$(top_srcdir)/headers $(TLS_CPPFLAGS) $(SFLOW_CPPFLAGS) $(NFV5_CPPFLAGS)
 AM_CFLAGS += $(TLS_CFLAGS)
 
 plugins_LTLIBRARIES = ipfixcol-tcp-input.la

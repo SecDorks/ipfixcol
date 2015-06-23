@@ -533,7 +533,6 @@ int insert_timestamp_data(struct ipfix_set_header *dataSet, uint64_t time_header
 void convert_packet(char **packet, ssize_t *len, char *input_info)
 {
 	struct ipfix_header *header = (struct ipfix_header *) *packet;
-	uint16_t numOfFlowSamples = 0;
 	uint16_t offset = 0;
 	info_list = (struct input_info_list *) input_info;
 
@@ -619,12 +618,13 @@ void convert_packet(char **packet, ssize_t *len, char *input_info)
 
 		/* Netflow v5 packet */
 		case NETFLOW_V5_VERSION: {
+#ifdef ENABLE_NFV5
 			uint64_t sysUp = ntohl(*((uint32_t *) (((uint8_t *) header) + 4)));
 			uint64_t unSec = ntohl(*((uint32_t *) (((uint8_t *) header) + 8)));
 			uint64_t unNsec = ntohl(*((uint32_t *) (((uint8_t *) header) + 12)));
 			uint64_t time_header = (unSec * 1000) + (unNsec / 1000000);
 
-			numOfFlowSamples = ntohs(header->length);
+			uint16_t numOfFlowSamples = ntohs(header->length);
 
 			/* Header modification */
 			header->export_time = header->sequence_number;
@@ -664,14 +664,14 @@ void convert_packet(char **packet, ssize_t *len, char *input_info)
 			if (*len >= htons(header->length)) {
 				seqNo[NF5_SEQ_N] += numOfFlowSamples;
 			}
-
+#endif
 			break; }
 
 		/* SFLOW packet (converted to Netflow v5 like packet */
 		default:
 #ifdef ENABLE_SFLOW
 			/* Conversion from sflow to Netflow v5 like IPFIX packet */
-			numOfFlowSamples = Process_sflow(*packet, *len);
+			uint16_t numOfFlowSamples = Process_sflow(*packet, *len);
 
 			/* Observation domain ID is unknown */
 			header->observation_domain_id = 0; // ??

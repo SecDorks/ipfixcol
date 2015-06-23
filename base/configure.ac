@@ -69,6 +69,12 @@ AC_ARG_ENABLE([sflow],
 	AC_HELP_STRING([--enable-sflow],[enable sFlow support]), [SFLOW_CPPFLAGS="-DENABLE_SFLOW"])
 AM_CONDITIONAL([ENABLE_SFLOW], [test "$enable_sflow" = "yes"])
 AC_SUBST([SFLOW_CPPFLAGS])
+
+# add --enable-nfv5 parameter
+AC_ARG_ENABLE([nfv5],
+    AC_HELP_STRING([--enable-nfv5],[enable NetFlow v5 support]), [NFV5_CPPFLAGS="-DENABLE_NFV5"])
+AM_CONDITIONAL([ENABLE_NFV5], [test "$enable_nfv5" = "yes"])
+AC_SUBST([NFV5_CPPFLAGS])
        
 AC_ARG_ENABLE([sctp], 
         AC_HELP_STRING([--disable-sctp],[disable sctp input plugin]))
@@ -252,7 +258,7 @@ echo "
   Prefix........: $prefix
   Distribution..: $DISTRO
   Debug build...: ${enable_debug:-no}
-  C Compiler....: $CC $AM_CFLAGS $CFLAGS $AM_CPPFLAGS $CPPFLAGS $TLS_CPPFLAGS $SFLOW_CPPFLAGS
+  C Compiler....: $CC $AM_CFLAGS $CFLAGS $AM_CPPFLAGS $CPPFLAGS $TLS_CPPFLAGS $SFLOW_CPPFLAGS $NFV5_CPPFLAGS
   C++ Compiler..: $CXX $AM_CXXFLAGS $CXXFLAGS $AM_CPPFLAGS $CPPFLAGS 
   Linker........: $LDFLAGS $LIBS
   rpmbuild......: ${RPMBUILD:-NONE}
