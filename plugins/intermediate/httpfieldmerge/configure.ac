@@ -75,8 +75,8 @@ AC_PROG_MAKE_SET
 ###################### Check for configure parameters ##########################
 
 AC_ARG_ENABLE([debug], 
-        AC_HELP_STRING([--enable-debug],[turn on more debugging options]),
-        [CFLAGS="$CFLAGS -Wextra -g"])
+    AC_HELP_STRING([--enable-debug],[turn on more debugging options]),
+    [CFLAGS="$CFLAGS -Wextra -g"])
 
 AC_ARG_ENABLE([doc],
         AC_HELP_STRING([--disable-doc],[disable documentation building]))
@@ -123,7 +123,7 @@ AC_SUBST(XSLTPROC)
 
 # generate output
 AC_CONFIG_FILES([Makefile
-                ipfixcol-httpfieldmerge-intermediate.spec])
+    ipfixcol-httpfieldmerge-intermediate.spec])
 
 # tools makefiles
 

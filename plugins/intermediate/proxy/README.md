@@ -10,7 +10,7 @@
 
 ##<a name="description"></a> Plugin description
 
-This intermediate plugin for IPFIXcol that 'translates' flows related to Web proxies,
+This intermediate plugin for IPFIXcol 'translates' flows related to Web proxies,
 useful for monitoring applications that need to be aware of the real hosts 'behind'
 the proxy. If this plugin is not used, all HTTP(S) flows will have the Web proxy as
 their source or destination. Specifically, this plugin performs the following tasks:
