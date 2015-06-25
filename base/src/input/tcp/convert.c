@@ -560,7 +560,6 @@ int insert_timestamp_data(struct ipfix_set_header *dataSet, uint64_t time_header
 int convert_packet(char **packet, ssize_t *len, char *input_info)
 {
 	struct ipfix_header *header = (struct ipfix_header *) *packet;
-    uint16_t numOfFlowSamples = 0;
 	uint16_t offset = 0;
 	info_list = (struct input_info_list *) input_info;
 
@@ -652,7 +651,7 @@ int convert_packet(char **packet, ssize_t *len, char *input_info)
 			uint64_t unNsec = ntohl(*((uint32_t *) (((uint8_t *) header) + 12)));
 			uint64_t time_header = (unSec * 1000) + (unNsec / 1000000);
 
-			numOfFlowSamples = MIN(ntohs(header->length), NETFLOW_V5_MAX_RECORD_COUNT);
+			uint16_t numOfFlowSamples = MIN(ntohs(header->length), NETFLOW_V5_MAX_RECORD_COUNT);
 
 			/* Header modification */
 			header->export_time = header->sequence_number;
@@ -699,7 +698,7 @@ int convert_packet(char **packet, ssize_t *len, char *input_info)
 		default:
 #ifdef ENABLE_SFLOW
 			/* Conversion from sflow to Netflow v5-like IPFIX packet */
-			numOfFlowSamples = Process_sflow(*packet, *len);
+			uint16_t numOfFlowSamples = Process_sflow(*packet, *len);
 
 			/* Observation domain ID is unknown */
 			header->observation_domain_id = 0;
