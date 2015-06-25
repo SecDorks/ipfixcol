@@ -77,7 +77,8 @@ static char *msg_module = "httpfieldmerge";
  * \param[in] pen IANA Private Enterprise Number
  * \return Field reference if supplied PEN is known, NULL otherwise
  */
-static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
+static struct ipfix_entity* pen_to_enterprise_fields(uint32_t pen)
+{
     struct ipfix_entity *fields = NULL;
     switch (pen) {
         case 16982:     fields = (struct ipfix_entity *) masaryk_fields;
@@ -105,7 +106,8 @@ static struct ipfix_entity* pen_to_enterprise_fields (uint32_t pen) {
  * \param[in] pen IANA Private Enterprise Number
  * \return Field mappings reference if supplied PEN is known, NULL otherwise
  */
-static struct field_mapping* pen_to_field_mappings (uint32_t pen) {
+static struct field_mapping* pen_to_field_mappings(uint32_t pen)
+{
     struct field_mapping *mapping = NULL;
     switch (pen) {
         case 16982:     mapping = (struct field_mapping *) masaryk_field_mappings;
@@ -135,7 +137,8 @@ static struct field_mapping* pen_to_field_mappings (uint32_t pen) {
  * \return Field reference if the supplied source field is known within the
  *      supplied mapping, NULL otherwise
  */
-static struct ipfix_entity* field_to_mapping_target (struct field_mapping* mapping, struct ipfix_entity* source_field) {
+static struct ipfix_entity* field_to_mapping_target(struct field_mapping* mapping, struct ipfix_entity* source_field)
+{
     uint8_t i;
     for (i = 0; i < vendor_fields_count; ++i) {
         if (mapping[i].from.element_id == source_field->element_id) {
@@ -153,7 +156,8 @@ static struct ipfix_entity* field_to_mapping_target (struct field_mapping* mappi
  * \param[in] rec_len Template record length
  * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
  */
-void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
+void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
+{
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
     (void) rec_len;
@@ -233,7 +237,8 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
  * \param[in] rec_len Template record length
  * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
  */
-void templates_processor (uint8_t *rec, int rec_len, void *data) {
+void templates_processor(uint8_t *rec, int rec_len, void *data)
+{
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
     struct ipfix_template_record *new_rec;
@@ -244,7 +249,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     uint16_t template_id = ntohs(old_rec->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
     if (templ_stats == NULL) {
-        MSG_ERROR(msg_module, "Could not find entry '%u' in hashmap; using original template", template_id);
+        MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
 
         /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
@@ -362,7 +367,8 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
  * \param[in] rec_len Data record length
  * \param[in] data Any-type data structure (here: proxy_processor)
  */
-void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data) {
+void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
+{
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     (void) templ;
 
@@ -389,7 +395,8 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
  * \param[out] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipfix_template_mgr *template_mgr, void **config) {
+int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfix_template_mgr *template_mgr, void **config)
+{
     struct httpfieldmerge_config *conf;
 
     conf = (struct httpfieldmerge_config *) calloc(1, sizeof(*conf));
@@ -424,7 +431,8 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
  * \param[out] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int intermediate_process_message (void *config, void *message) {
+int intermediate_process_message(void *config, void *message)
+{
     struct httpfieldmerge_config *conf;
     struct httpfieldmerge_processor proc;
     struct ipfix_message *msg, *new_msg;
@@ -641,7 +649,8 @@ int intermediate_process_message (void *config, void *message) {
  * \param[in] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int intermediate_close (void *config) {
+int intermediate_close(void *config)
+{
     struct httpfieldmerge_config *conf;
     conf = (struct httpfieldmerge_config *) config;
 

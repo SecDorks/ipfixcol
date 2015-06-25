@@ -108,12 +108,12 @@ struct field_mapping {
 };
 
 static struct field_mapping invea_field_mappings[] = {
-    {inveaHttpHost, rsHttpHost},
-    {inveaHttpUrl,  rsHttpUrl}
+    { inveaHttpHost,    rsHttpHost },
+    { inveaHttpUrl,     rsHttpUrl }
 };
 static struct field_mapping masaryk_field_mappings[] = {
-    {masarykHttpHost, rsHttpHost},
-    {masarykHttpUrl,  rsHttpUrl}
+    { masarykHttpHost,  rsHttpHost },
+    { masarykHttpUrl,   rsHttpUrl }
 };
 static struct field_mapping ntop_field_mappings[] = {
     {ntopHttpHost,  rsHttpHost},
