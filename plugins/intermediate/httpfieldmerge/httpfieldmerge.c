@@ -127,6 +127,31 @@ static struct field_mapping* pen_to_field_mappings(uint32_t pen)
 }
 
 /**
+ * \brief Retrieves a reference to field mappings, based on a field ID. This is
+ * only for fields converted from NetFlow v9 that have an 'all-ones' enterprise ID.
+ *
+ * \param[in] id Field ID
+ * \return Field mappings reference if ID could be found, NULL otherwise
+ */
+static struct field_mapping* get_field_mappings_v9(uint16_t id)
+{
+    struct field_mapping *mapping = NULL;
+    uint8_t i;
+
+    for (i = 0; i < vendor_fields_count && mapping == NULL; ++i) {
+        if (ntopv9_field_mappings[i].from.pen == NFV9_CONVERSION_PEN && ntopv9_field_mappings[i].from.element_id == id) {
+            mapping = &ntopv9_field_mappings[i];
+        }
+    }
+
+    // if (mapping == NULL) {
+    //     MSG_WARNING(msg_module, "Could not retrieve (NetFlow v9) field mappings for enterprise-specific IEs; unknown field ID (%u)", id);
+    // }
+
+    return mapping;
+}
+
+/**
  * \brief Retrieves an IPFIX Information Element based on a supplied field
  * mapping and the mapping's source field. As such, the target of a mapping
  * is retrieved.
@@ -202,11 +227,12 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 
         /* Check enterprise-specific IEs from ntop (converted from NetFlow v9)
          * https://github.com/CESNET/ipfixcol/issues/16
+         * http://www.ietf.org/mail-archive/web/ipfix/current/msg07287.html
          */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
-            if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntop_fields[i].element_id, NULL) != NULL) {
+            if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntopv9_fields[i].element_id, NULL) != NULL) {
                 MSG_NOTICE(msg_module, "Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", template_id);
-                templ_stats->http_fields_pen = ntop_fields[i].pen;
+                templ_stats->http_fields_pen = NFV9_CONVERSION_PEN;
             }
         }
 
@@ -281,44 +307,88 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
     memcpy(new_rec, old_rec, rec_len);
 
     /* 1. Find HTTP fields (if present) and replace them */
-    struct ipfix_entity *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
-    struct field_mapping *field_mappings = pen_to_field_mappings(templ_stats->http_fields_pen);
+    struct field_mapping *field_mappings;
     struct ipfix_entity *target_field;
-    for (i = 0; i < vendor_fields_count; ++i) {
-        /* Iterate over all fields in template record */
-        uint8_t mapping_applied = 0;
-        uint16_t count = 0, index = 0;
-        while (count < ntohs(new_rec->count)
-                && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
-            /* Apply field mapping if enterprise-specific fields have been found */
-            if (ntohs(new_rec->fields[index].ie.id) == (http_fields[i].element_id | 0x8000)) {
-                /* Find mapping's target field */
-                target_field = field_to_mapping_target(field_mappings, &http_fields[i]);
+    uint16_t count = 0, index = 0;
+    uint16_t field_id;
 
-                /* Replace field ID */
-                new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
+    if (templ_stats->http_fields_pen == NFV9_CONVERSION_PEN) {
+        for (i = 0; i < vendor_fields_count; ++i) {
+            /* Iterate over all fields in template record */
+            while (count < ntohs(new_rec->count)
+                    && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
+                field_id = ntohs(new_rec->fields[index].ie.id);
 
-                mapping_applied = 1;
-            }
+                /* Only continue if enterprise bit is set */
+                if (field_id & 0x8000) {
+                    /* Unset enterprise bit */
+                    field_id &= ~0x8000;
 
-            /* If there is a PEN stored for this IE, it comes just after the IE, before the next IE */
-            if (ntohs(new_rec->fields[index].ie.id) >> 15) {
+                    /* Retrieve field mapping */
+                    field_mappings = get_field_mappings_v9(field_id);
+                    if (field_mappings) {
+                        /* Find mapping's target field */
+                        target_field = field_to_mapping_target(field_mappings, &field_mappings[i].from);
+
+                        /* Replace field ID */
+                        new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
+
+                        /* PEN comes just after the IE, before the next IE */
+                        ++index;
+
+                        /* Replace PEN */
+                        new_rec->fields[index].enterprise_number = htonl(target_field->pen);
+                    } else {
+                        /* No field mappings found, so no need to translate field ID */
+                        /* PEN comes just after the IE, before the next IE */
+                        ++index;
+                    }
+                }
+
+                ++count;
                 ++index;
             }
+        }
+    } else {
+        struct ipfix_entity *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
+        if ((field_mappings = pen_to_field_mappings(templ_stats->http_fields_pen))) {
+            /* Iterate over all fields in template record */
+            while (count < ntohs(new_rec->count)
+                    && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
+                field_id = ntohs(new_rec->fields[index].ie.id);
 
-            if (mapping_applied) {
-                /* Replace PEN */
-                new_rec->fields[index].enterprise_number = htonl(target_field->pen);
+                /* Only continue if enterprise bit is set */
+                if (field_id & 0x8000) {
+                    /* Unset enterprise bit */
+                    field_id &= ~0x8000;
 
-                /* Reset for next iteration */
-                mapping_applied = 0;
+                    for (i = 0; i < vendor_fields_count; ++i) {
+                        /* Apply field mapping if enterprise-specific fields have been found */
+                        /* Note: we can safely use 'index + 1' in the statement below, since the first part
+                         * of the condition already indicates that we are dealing with an enterprise-specific IE
+                         */
+                        if (field_id == http_fields[i].element_id && ntohl(new_rec->fields[index + 1].enterprise_number) == http_fields[i].pen) {
+                            /* Find mapping's target field */
+                            target_field = field_to_mapping_target(field_mappings, &http_fields[i]);
 
-                /* Skip looping over full set of fields, since every IE can exist only once */
-                break;
+                            /* Replace field ID */
+                            new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
+
+                            /* PEN comes just after the IE, before the next IE */
+                            ++index;
+
+                            /* Replace PEN */
+                            new_rec->fields[index].enterprise_number = htonl(target_field->pen);
+
+                            /* No need to loop further since field has been found already */
+                            break;
+                        }
+                    }
+                }
+
+                ++count;
+                ++index;
             }
-
-            ++count;
-            ++index;
         }
     }
 

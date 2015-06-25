@@ -79,6 +79,9 @@
 #define ntopHttpHost    { 35632, 187, "ntopHttpHost" }
 #define ntopHttpUrl     { 35632, 180, "ntopHttpUrl" }
 
+#define ntopHttpHostv9  { NFV9_CONVERSION_PEN, 24891, "ntopHttpHost" }  /* Original ID: 57659 */
+#define ntopHttpUrlv9   { NFV9_CONVERSION_PEN, 24884, "ntopHttpUrl" }   /* Original ID: 57652 */
+
 #define rsHttpHost      { 44913,  20, "rsHttpHost" }
 #define rsHttpUrl       { 44913,  21, "rsHttpUrl" }
 
@@ -96,6 +99,9 @@ static struct ipfix_entity masaryk_fields[] = {
 };
 static struct ipfix_entity ntop_fields[] = {
     ntopHttpHost, ntopHttpUrl
+};
+static struct ipfix_entity ntopv9_fields[] = {
+    ntopHttpHostv9, ntopHttpUrlv9
 };
 static struct ipfix_entity rs_fields[] = {
     rsHttpHost, rsHttpUrl
@@ -116,8 +122,12 @@ static struct field_mapping masaryk_field_mappings[] = {
     { masarykHttpUrl,   rsHttpUrl }
 };
 static struct field_mapping ntop_field_mappings[] = {
-    {ntopHttpHost,  rsHttpHost},
-    {ntopHttpUrl,   rsHttpUrl}
+    { ntopHttpHost,     rsHttpHost },
+    { ntopHttpUrl,      rsHttpUrl }
+};
+static struct field_mapping ntopv9_field_mappings[] = {
+    { ntopHttpHostv9,   rsHttpHost },
+    { ntopHttpUrlv9,    rsHttpUrl }
 };
 
 struct templ_stats_elem_t {
