@@ -609,27 +609,22 @@ int intermediate_process_message(void *config, void *message)
     /* Demarcate end of templates in set */
     new_msg->templ_set[tsets] = NULL;
 
-    /* Process option template sets */
-    MSG_DEBUG(msg_module, "Processing option template sets...");
+    /* Process option template sets; only copy existing records */
+    // MSG_DEBUG(msg_module, "Processing option template sets...");
     proc.type = TM_OPTIONS_TEMPLATE;
     for (i = 0; i < MSG_MAX_OTEMPL_SETS && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
+        uint16_t otempl_set_len = ntohs(msg->opt_templ_set[i]->header.length);
 
         /* Add template set header, and update offset and length */
-        memcpy(proc.msg + proc.offset, &(msg->opt_templ_set[i]->header), 4);
-        proc.offset += 4;
-        proc.length = 4;
+        memcpy(proc.msg + proc.offset, &(msg->opt_templ_set[i]), otempl_set_len);
+        MSG_DEBUG(msg_module, " >> Length: %u", otempl_set_len);
+        proc.offset += otempl_set_len;
+        proc.length = otempl_set_len;
 
-        template_set_process_records((struct ipfix_template_set *) msg->opt_templ_set[i], proc.type, &templates_processor, (void *) &proc);
-
-        /* Check whether a new options template set was added by 'templates_processor' */
-        if (proc.offset == prev_offset + 4) {
-            proc.offset = prev_offset;
-        } else { /* New options template set was added; add it to data structure as well */
-            new_msg->opt_templ_set[otsets] = (struct ipfix_options_template_set *) ((uint8_t *) proc.msg + prev_offset);
-            new_msg->opt_templ_set[otsets]->header.length = htons(proc.length);
-            otsets++;
-        }
+        // new_msg->opt_templ_set[otsets] = (struct ipfix_options_template_set *) ((uint8_t *) proc.msg + prev_offset);
+        // new_msg->opt_templ_set[otsets]->header.length = htons(proc.length);
+        otsets++;
     }
 
     /* Demarcate end of option templates in set */
