@@ -270,6 +270,15 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
     struct ipfix_template_record *new_rec;
     uint8_t i;
 
+    /* Don't process options template records */
+    if (proc->type == TM_OPTIONS_TEMPLATE) {
+        /* Copy record to new message */
+        memcpy(proc->msg + proc->offset, old_rec, rec_len);
+        proc->offset += rec_len;
+        proc->length += rec_len;
+        return;
+    }
+
     /* Get structure from hashmap that provides information about current template */
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(old_rec->template_id);
@@ -614,17 +623,22 @@ int intermediate_process_message(void *config, void *message)
     proc.type = TM_OPTIONS_TEMPLATE;
     for (i = 0; i < MSG_MAX_OTEMPL_SETS && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
-        uint16_t otempl_set_len = ntohs(msg->opt_templ_set[i]->header.length);
 
         /* Add template set header, and update offset and length */
-        memcpy(proc.msg + proc.offset, &(msg->opt_templ_set[i]), otempl_set_len);
-        MSG_DEBUG(msg_module, " >> Length: %u", otempl_set_len);
-        proc.offset += otempl_set_len;
-        proc.length = otempl_set_len;
+        memcpy(proc.msg + proc.offset, &(msg->opt_templ_set[i]->header), 4);
+        proc.offset += 4;
+        proc.length = 4;
 
-        // new_msg->opt_templ_set[otsets] = (struct ipfix_options_template_set *) ((uint8_t *) proc.msg + prev_offset);
-        // new_msg->opt_templ_set[otsets]->header.length = htons(proc.length);
-        otsets++;
+        template_set_process_records((struct ipfix_template_set *) msg->opt_templ_set[i], proc.type, &templates_processor, (void *) &proc);
+
+        /* Check whether a new options template set was added by 'templates_processor' */
+        if (proc.offset == prev_offset + 4) {
+            proc.offset = prev_offset;
+        } else { /* New options template set was added; add it to data structure as well */
+            new_msg->opt_templ_set[otsets] = (struct ipfix_options_template_set *) ((uint8_t *) proc.msg + prev_offset);
+            new_msg->opt_templ_set[otsets]->header.length = htons(proc.length);
+            otsets++;
+        }
     }
 
     /* Demarcate end of option templates in set */
