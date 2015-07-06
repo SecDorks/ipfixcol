@@ -42,8 +42,11 @@ Example:
             <!-- Targeted number of flows per second (default: 1000) -->
             <fps>1000</fps>
 
-            <!-- IPFIXcol will terminate automatically after this number of packets (default: 0 - no termination) -->
+            <!-- IPFIXcol will terminate automatically after generating this number of packets (default: 0 - no termination) -->
             <maxPackets>0</maxPackets>
+
+            <!-- IPFIXcol will terminate automatically after generating this number of data records (default: 0 - no termination) -->
+            <maxRecords>0</maxRecords>
 
             <!-- ODID to be used in generated messages (default: 44913) -->
             <odid>44913</odid>

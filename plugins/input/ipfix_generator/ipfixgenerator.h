@@ -60,9 +60,9 @@
 struct ipfixgenerator_config {
     time_t last_templates_transmission;
     uint32_t max_packets;
+    uint32_t max_records;
     uint64_t packets_sent;
-
-    uint32_t data_records_sent;
+    uint64_t data_records_sent;
 
     struct input_info_file *info;
     uint8_t templ_sets_count;

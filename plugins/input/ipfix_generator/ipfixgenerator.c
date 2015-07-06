@@ -245,6 +245,17 @@ int input_init(char *params, void **config)
                 }
 
                 xmlFree(max_packets_str);
+            } else if (xmlStrcmp(node->name, (const xmlChar *) "maxRecords") == 0) {
+                char *max_records_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
+
+                /* Only consider this node if its value is non-empty */
+                if (strlen(max_records_str) > 0) {
+                    conf->max_records = atoi(max_records_str);
+                } else {
+                    conf->max_records = DEFAULT_MAX_RECORDS;
+                }
+
+                xmlFree(max_records_str);
             } else {
                 MSG_WARNING(msg_module, "Unknown plugin configuration key ('%s')", node->name);
             }
@@ -294,7 +305,8 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
     time_t now = time(NULL);
 
     /* Check whether generation must be stopped */
-    if (conf->max_packets > 0 && conf->packets_sent == conf->max_packets) {
+    if ((conf->max_packets > 0 && conf->packets_sent >= conf->max_packets)
+            || (conf->max_records > 0 && conf->data_records_sent >= conf->max_records)) {
         conf->info->status = SOURCE_STATUS_CLOSED;
 
         *info = (struct input_info*) conf->info;

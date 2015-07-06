@@ -70,6 +70,7 @@ static struct ipfix_ie all_fields[] = {
 
 #define DEFAULT_FPS 10000
 #define DEFAULT_MAX_PACKETS 0
+#define DEFAULT_MAX_RECORDS 0
 #define DEFAULT_ODID 44913
 
 #define MAX_DATA_RECORDS 15
