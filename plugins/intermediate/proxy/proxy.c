@@ -72,13 +72,13 @@
 #include "proxy_config.h"
 #include "proxy_stat_thread.h"
 
-// API version constant
+/* API version constant */
 IPFIXCOL_API_VERSION;
 
-// Identifier for MSG_* macros
+/* Identifier for MSG_* macros */
 static char *msg_module = "proxy";
 
-// Auxiliary functions for extracting data of exact length
+/* Auxiliary functions for extracting data of exact length */
 #define read8(ptr)  (*((uint8_t *)  (ptr)))
 #define read16(ptr) (*((uint16_t *) (ptr)))
 #define read32(ptr) (*((uint32_t *) (ptr)))
@@ -90,7 +90,8 @@ static char *msg_module = "proxy";
  * \param[in] id IPFIX Information Element ID
  * \return 1 on success, 0 otherwise
  */
-static int is_port_number_field (uint16_t id) {
+static int is_port_number_field(uint16_t id)
+{
     uint8_t i;
     for (i = 0; i < port_number_fields_count; ++i) {
         if (id == port_number_fields[i].element_id) {
@@ -108,7 +109,8 @@ static int is_port_number_field (uint16_t id) {
  * \param[in] id IPFIX Information Element ID
  * \return 1 on success, 0 otherwise
  */
-static int is_source_field (uint16_t id) {
+static int is_source_field(uint16_t id)
+{
     uint8_t i;
     for (i = 0; i < source_fields_count; ++i) {
         if (id == source_fields[i].element_id) {
@@ -126,7 +128,8 @@ static int is_source_field (uint16_t id) {
  * \param[in] pen IANA Private Enterprise Number
  * \return Field reference if supplied PEN is known, NULL otherwise
  */
-static struct ipfix_ie* pen_to_enterprise_fields (uint32_t pen) {
+static struct ipfix_ie* pen_to_enterprise_fields(uint32_t pen)
+{
     struct ipfix_ie *fields = NULL;
     switch (pen) {
         case 35632:     fields = (struct ipfix_ie *) ntop_fields;
@@ -153,18 +156,19 @@ static struct ipfix_ie* pen_to_enterprise_fields (uint32_t pen) {
  * \param[in] timeouts Indicates how many times a query timed out during the execution of the given request
  * \param[in] hostent Pointer to a 'struct hostent', containing the name of the host returned by the query, or NULL on error
  */
-static void ares_cb (void *arg, int status, int timeouts, struct hostent *hostent) {
+static void ares_cb(void *arg, int status, int timeouts, struct hostent *hostent)
+{
     struct proxy_ares_processor *ares_proc = (struct proxy_ares_processor *) arg;
     (void) timeouts;
     char *ip_addr;
     uint8_t i, offset;
     uint16_t element_id, template_id, length;
 
-    // Determine IP versions used within this template
+    /* Determine IP versions used within this template */
     template_id = ares_proc->templ->template_id;
     struct templ_stats_elem_t *templ_stats;
     HASH_FIND(hh, ares_proc->proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
-    if (templ_stats == NULL) { // Do only if it was not done (successfully) before
+    if (templ_stats == NULL) { /* Do only if it was not done (successfully) before */
         MSG_ERROR(msg_module, "Could not find template information (template ID: %u)", template_id);
         free(ares_proc->http_hostname);
         free(ares_proc);
@@ -193,12 +197,12 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
     if (failed_resolution) {
         ++ares_proc->proc->plugin_conf->failed_resolutions;
 
-        // Copy original data record
+        /* Copy original data record */
         memcpy(ares_proc->proc->msg + ares_proc->proc->offset, ares_proc->orig_rec, ares_proc->orig_rec_len);
         ares_proc->proc->offset += ares_proc->orig_rec_len;
         ares_proc->proc->length += ares_proc->orig_rec_len;
 
-        // Add empty 'orig' fields. Field order: <src_port, src_IP_addr, dst_port, dst_IP_addr>
+        /* Add empty 'orig' fields. Field order: <src_port, src_IP_addr, dst_port, dst_IP_addr> */
         if (templ_stats->ipv4) {
             for (i = 0; i < orig_fields_count; ++i) {
                 memset(ares_proc->proc->msg + ares_proc->proc->offset, 0, orig_fields_IPv4[i].length);
@@ -228,16 +232,16 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
         return;
     }
 
-    // Only select first IP address (in network byte order)
+    /* Only select first IP address (in network byte order) */
     ip_addr = hostent->h_addr_list[0];
 
-    // Convert port number to network byte order
+    /* Convert port number to network byte order */
     ares_proc->port_number = htons(ares_proc->port_number);
 
-    // Store pointer to start of data record, which is useful for calculating relative positions of fields later
+    /* Store pointer to start of data record, which is useful for calculating relative positions of fields later */
     uint32_t data_record_offset = ares_proc->proc->offset;
 
-    // Copy original data record
+    /* Copy original data record */
     memcpy(ares_proc->proc->msg + ares_proc->proc->offset, ares_proc->orig_rec, ares_proc->orig_rec_len);
     ares_proc->proc->offset += ares_proc->orig_rec_len;
     ares_proc->proc->length += ares_proc->orig_rec_len;
@@ -263,7 +267,7 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
         ares_proc->proc->length += length;
     }
 
-    // Copy new data to the regular IP address and port number fields
+    /* Copy new data to the regular IP address and port number fields */
     for (i = 0; i < mapping_count; ++i) {
         if (templ_stats->ipv4) {
             element_id = IPv4_field_mappings[i].from.element_id;
@@ -287,7 +291,7 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
 
         if (is_port_number_field(element_id)) {
             memcpy(ares_proc->proc->msg + data_record_offset + offset, &ares_proc->port_number, length);
-        } else { // IP address
+        } else { /* IP address */
             memcpy(ares_proc->proc->msg + data_record_offset + offset, ip_addr, length);
         }
     }
@@ -304,13 +308,14 @@ static void ares_cb (void *arg, int status, int timeouts, struct hostent *hosten
  * \param[in] rec_len Template record length
  * \param[in] data Any-type data structure (here: proxy_processor)
  */
-void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
+void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
+{
     struct proxy_processor *proc = (struct proxy_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
     (void) rec_len;
     int i;
 
-    // Determine IP versions used within this template
+    /* Determine IP versions used within this template */
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(record->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
@@ -327,15 +332,15 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
         templ_stats->ipv4 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_ie) sourceIPv4Address).element_id, NULL) != NULL);
         templ_stats->ipv6 = (template_record_get_field(record, templ_stats->http_fields_pen, ((struct ipfix_ie) sourceIPv6Address).element_id, NULL) != NULL);
 
-        // Store result in hashmap
+        /* Store result in hashmap */
         HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats);
     }
 
-    // Determine exporter PEN based on presence of certain enterprise-specific IEs
+    /* Determine exporter PEN based on presence of certain enterprise-specific IEs */
     if (templ_stats->http_fields_pen_determined == 0) { // Do only if it was not done (successfully) before
         struct ipfix_template_row *templ_row;
 
-        // Check enterprise-specific IEs from INVEA-TECH
+        /* Check enterprise-specific IEs from INVEA-TECH */
         for (i = 0; i < vendor_fields_count; ++i) {
             if ((templ_row = template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL)) != NULL) {
                 templ_stats->http_fields_pen = invea_fields[i].pen;
@@ -343,7 +348,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             }
         }
 
-        // Check enterprise-specific IEs from ntop
+        /* Check enterprise-specific IEs from ntop */
         if (templ_stats->http_fields_pen == 0) {
             for (i = 0; i < vendor_fields_count; ++i) {
                 if ((templ_row = template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL)) != NULL) {
@@ -353,8 +358,9 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             }
         }
 
-        // Check enterprise-specific IEs from ntop (converted from NetFlow v9)
-        // https://github.com/CESNET/ipfixcol/issues/16
+        /* Check enterprise-specific IEs from ntop (converted from NetFlow v9)
+         * https://github.com/CESNET/ipfixcol/issues/16
+         */
         if (templ_stats->http_fields_pen == 0) {
             for (i = 0; i < vendor_fields_count; ++i) {
                 if ((templ_row = template_record_get_field(record, NFV9_CONVERSION_PEN, ntop_fields[i].element_id, NULL)) != NULL) {
@@ -364,7 +370,7 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
             }
         }
 
-        // Check enterprise-specific IEs from RS
+        /* Check enterprise-specific IEs from RS */
         if (templ_stats->http_fields_pen == 0) {
             for (i = 0; i < vendor_fields_count; ++i) {
                 if ((templ_row = template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL)) != NULL) {
@@ -398,7 +404,8 @@ void templates_stat_processor (uint8_t *rec, int rec_len, void *data) {
  * \param[in] rec_len Template record length
  * \param[in] data Any-type data structure (here: proxy_processor)
  */
-void templates_processor (uint8_t *rec, int rec_len, void *data) {
+void templates_processor(uint8_t *rec, int rec_len, void *data)
+{
     struct proxy_processor *proc = (struct proxy_processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
     struct ipfix_template_record *new_rec;
@@ -409,30 +416,30 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
     uint16_t element_id, element_length;
     uint32_t pen;
 
-    // Get structure from hashmap that provides information about current template
+    /* Get structure from hashmap that provides information about current template */
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(old_rec->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
     if (templ_stats == NULL) {
         MSG_ERROR(msg_module, "Could not find entry '%u' in hashmap; using original template record", template_id);
 
-        // Copy existing record to new message
+        /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
         return;
     }
 
-    // Skip further processing if template does not include HTTP IEs (hostname, URL)
+    /* Skip further processing if template does not include HTTP IEs (hostname, URL) */
     if (templ_stats->http_fields_pen == 0) {
-        // Copy existing record to new message
+        /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
         return;
     }
 
-    // Obtain the total number of fields to add to template (i.e., IPv4 and/or IPv6)
+    /* Obtain the total number of fields to add to template (i.e., IPv4 and/or IPv6) */
     int orig_fields_to_add = 0;
     if (templ_stats->ipv4) {
         orig_fields_to_add += orig_fields_count;
@@ -441,7 +448,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         orig_fields_to_add += orig_fields_count;
     }
     if (orig_fields_to_add == 0) {
-        // Copy existing record to new message
+        /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
@@ -449,13 +456,13 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         return;
     }
 
-    // Add the missing elements to the template:
-    //     0. Copy original template record
+    /* Add the missing elements to the template: */
+    /* 0. Copy original template record */
     new_rec = calloc(1, rec_len + (orig_fields_to_add * 4) + (orig_fields_to_add * 4)); // ID + length = 4 bytes, PEN = 4 bytes
     memcpy(new_rec, old_rec, rec_len);
     new_rec_len = rec_len;
 
-    //     1. Update (new) template record (ID + length = 4 bytes)
+    /* 1. Update (new) template record (ID + length = 4 bytes) */
     if (templ_stats->ipv4) {
         for (i = 0; i < orig_fields_count; ++i) {
             if (orig_fields_IPv4[i].pen == 0) {
@@ -468,11 +475,11 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
             memcpy(((uint8_t *) new_rec) + new_rec_len, &element_id, 2);
             memcpy(((uint8_t *) new_rec) + new_rec_len + 2, &element_length, 2);
 
-            // Update counters
+            /* Update counters */
             new_rec->count = htons(ntohs(new_rec->count) + 1);
             new_rec_len += 4;
 
-            // PEN must be added in case of enterprise-specific IEs
+            /* PEN must be added in case of enterprise-specific IEs */
             if (orig_fields_IPv4[i].pen != 0) {
                 pen = htonl(orig_fields_IPv4[i].pen);
                 memcpy(((uint8_t *) new_rec) + new_rec_len, &pen, 4);
@@ -501,11 +508,11 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
             memcpy(((uint8_t *) new_rec) + new_rec_len, &element_id, 2);
             memcpy(((uint8_t *) new_rec) + new_rec_len + 2, &element_length, 2);
 
-            // Update counters
+            /* Update counters */
             new_rec->count = htons(ntohs(new_rec->count) + 1);
             new_rec_len += 4;
 
-            // PEN must be added in case of enterprise-specific IEs
+            /* PEN must be added in case of enterprise-specific IEs */
             if (orig_fields_IPv6[i].pen != 0) {
                 pen = htonl(orig_fields_IPv6[i].pen);
                 memcpy(((uint8_t *) new_rec) + new_rec_len, &pen, 4);
@@ -514,7 +521,7 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         }
     }
 
-    //     2. Generate new template and store it in template manager
+    /* 2. Generate new template and store it in template manager */
     uint16_t template_id_new = ntohs(new_rec->template_id);
     proc->key->tid = template_id_new;
     new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
@@ -524,12 +531,12 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
         MSG_ERROR(msg_module, "Failed to add template to template manager");
     }
 
-    //     3. Add new record to message
+    /* 3. Add new record to message */
     memcpy(proc->msg + proc->offset, new_rec, new_rec_len);
     proc->offset += new_rec_len;
     proc->length += new_rec_len;
 
-    // Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID)
+    /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
     struct templ_stats_elem_t *templ_stats_new;
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id_new, sizeof(uint16_t), templ_stats_new);
     if (templ_stats_new) {
@@ -563,14 +570,15 @@ void templates_processor (uint8_t *rec, int rec_len, void *data) {
  * \param[in] rec_len Data record length
  * \param[in] data Any-type data structure (here: proxy_processor)
  */
-void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data) {
+void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
+{
     struct proxy_processor *proc = (struct proxy_processor *) data;
     uint8_t i, j;
     uint8_t *p;
     uint16_t *msg_data;
     int field_offset;
 
-    // Get structure from hashmap that provides information about current template
+    /* Get structure from hashmap that provides information about current template */
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = templ->template_id;
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
@@ -579,29 +587,29 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
         return;
     }
 
-    // Skip further processing if template does not include HTTP IEs (hostname, URL)
+    /* Skip further processing if template does not include HTTP IEs (hostname, URL) */
     if (templ_stats->http_fields_pen == 0) {
         ++proc->plugin_conf->records_wo_resolution;
 
-        // Copy original data record
+        /* Copy original data record */
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
         return;
     }
 
-    // Check whether and if, which, port number field with proxy port number can be found in this data record
+    /* Check whether and if, which, port number field with proxy port number can be found in this data record */
     int proxy_port_field_id = 0; // Stores ID of field with proxy port (or '-1' in case of no proxy)
     for (i = 0; i < port_number_fields_count; ++i) {
-        // Skip processing if template does not feature source/destination port fields
+        /* Skip processing if template does not feature source/destination port fields */
         if ((field_offset = template_contains_field(templ, port_number_fields[i].element_id)) == -1) {
             continue;
         }
 
-        // Read (source/destination) port number
+        /* Read (source/destination) port number */
         uint16_t port = ntohs(read16(rec + field_offset));
 
-        // Check whether (source/destination) port number is a proxy port number
+        /* Check whether (source/destination) port number is a proxy port number */
         for (j = 0; j < proc->plugin_conf->proxy_port_count; ++j) {
             if (port == proc->plugin_conf->proxy_ports[j]) {
                 proxy_port_field_id = port_number_fields[i].element_id;
@@ -609,22 +617,22 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
             }
         }
 
-        // Skip if port number field with proxy port number has already been found
+        /* Skip if port number field with proxy port number has already been found */
         if (proxy_port_field_id) {
             break;
         }
     }
 
-    // Skip further processing if record does not feature proxy traffic
+    /* Skip further processing if record does not feature proxy traffic */
     if (!proxy_port_field_id) {
         ++proc->plugin_conf->records_wo_resolution;
 
-        // Copy original data record
+        /* Copy original data record */
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
 
-        // Add empty 'orig' fields. Field order: <src_port, src_IP_addr, dst_port, dst_IP_addr>
+        /* Add empty 'orig' fields. Field order: <src_port, src_IP_addr, dst_port, dst_IP_addr> */
         if (templ_stats->ipv4) {
             for (i = 0; i < orig_fields_count; ++i) {
                 memset(proc->msg + proc->offset, 0, orig_fields_IPv4[i].length);
@@ -652,18 +660,18 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
         return;
     }
 
-    // Obtain pointer to which HTTP fields to use (from which exporter vendor)
+    /* Obtain pointer to which HTTP fields to use (from which exporter vendor) */
     struct ipfix_ie *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
 
     uint8_t *value_offset;
     uint16_t field_length;
 
-    // Retrieve HTTP hostname
+    /* Retrieve HTTP hostname */
     char http_hostname[HTTP_FIELD_WORKING_SIZE + 1];
     field_offset = template_contains_field(templ, http_fields[0].element_id | 0x8000);
 
     if (http_fields[0].length == VAR_LEN_ELEM_LEN) {
-        // Determine actual field length based on field's first byte
+        /* Determine actual field length based on field's first byte */
         field_length = read8(rec + field_offset);
         value_offset = rec + field_offset + 1;
 
@@ -681,12 +689,12 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     http_hostname[field_length] = '\0';
     free(msg_data);
 
-    // Retrieve HTTP URL
+    /* Retrieve HTTP URL */
     char http_url[HTTP_FIELD_WORKING_SIZE + 1];
     field_offset = template_contains_field(templ, http_fields[1].element_id | 0x8000);
 
     if (http_fields[1].length == VAR_LEN_ELEM_LEN) {
-        // Determine actual field length based on field's first byte
+        /* Determine actual field length based on field's first byte */
         field_length = read8(rec + field_offset);
         value_offset = rec + field_offset + 1;
 
@@ -718,7 +726,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     }
 
     if (analyze_hostname) {
-        // Check whether the hostname contains a protocol specification (e.g., 'http://' or 'https://'). If so, strip it.
+        /* Check whether the hostname contains a protocol specification (e.g., 'http://' or 'https://'). If so, strip it. */
         if ((p = (uint8_t *) strstr(http_hostname, "://")) != NULL) {
             /*
              * Shift memory contents such that the String is trimmed. Since we
@@ -728,7 +736,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
             memcpy(http_hostname, p + 3, strlen(http_hostname) - (p - (uint8_t *) &http_hostname[0])); // '+3' is to ignore '://'
         }
 
-        // Check whether the hostname contains a path as well. If so, strip it.
+        /* Check whether the hostname contains a path as well. If so, strip it. */
         if ((p = (uint8_t *) strstr(http_hostname, "/")) != NULL) {
             http_hostname[p - (uint8_t *) &http_hostname[0]] = '\0';
         }
@@ -760,12 +768,12 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
             ++proc->plugin_conf->skipped_resolutions;
         }
 
-        // Copy original data record
+        /* Copy original data record */
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
 
-        // Add empty 'orig' fields. Field order: <src_port, src_IP_addr, dst_port, dst_IP_addr>
+        /* Add empty 'orig' fields. Field order: <src_port, src_IP_addr, dst_port, dst_IP_addr> */
         if (templ_stats->ipv4) {
             for (i = 0; i < orig_fields_count; ++i) {
                 memset(proc->msg + proc->offset, 0, orig_fields_IPv4[i].length);
@@ -795,19 +803,19 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     ++proc->plugin_conf->records_resolution;
 
-    // Check whether 'httpHost' also contains a port number (80: default port number)
-    int port_number = 80; // Default value
+    /* Check whether 'httpHost' also contains a port number (80: default port number) */
+    int port_number = 80; /* Default value */
     if ((p = (uint8_t *) strstr(http_hostname, ":")) != NULL) {
-        // Extract port number
-        char port_number_string[5]; // Port number can feature 5 characters at most
-        memcpy(port_number_string, p + 1, strlen(http_hostname) - (p - (uint8_t *) &http_hostname[0])); // '+1' is to ignore ':'
+        /* Extract port number */
+        char port_number_string[5]; /* Port number can feature 5 characters at most */
+        memcpy(port_number_string, p + 1, strlen(http_hostname) - (p - (uint8_t *) &http_hostname[0])); /* '+1' is to ignore ':' */
         port_number = atoi(port_number_string);
 
-        // Remove port number from hostname
+        /* Remove port number from hostname */
         http_hostname[p - (uint8_t *) &http_hostname[0]] = '\0';
     }
 
-    // Prepare processing structure
+    /* Prepare processing structure */
     struct proxy_ares_processor *ares_proc = (struct proxy_ares_processor *) calloc(1, sizeof(struct proxy_ares_processor));
     if (!ares_proc) {
         MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
@@ -820,7 +828,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
     ares_proc->orig_rec_len = rec_len;
     ares_proc->port_number = port_number;
     ares_proc->proxy_port_field_id = proxy_port_field_id;
-    ares_proc->http_hostname = calloc(strlen(http_hostname) + 1, sizeof(char)); // '+1' is for null-terminating character
+    ares_proc->http_hostname = calloc(strlen(http_hostname) + 1, sizeof(char)); /* '+1' is for null-terminating character */
     if (!ares_proc->http_hostname) {
         MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
         free(ares_proc);
@@ -829,7 +837,7 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
 
     strncpy_safe(ares_proc->http_hostname, http_hostname, strlen(http_hostname) + 1);
 
-    // Perform asynchronous domain name resolution
+    /* Perform asynchronous domain name resolution */
     *proc->ares_channel_id = (*proc->ares_channel_id + 1) % ARES_CHANNELS;
     if (templ_stats->ipv4) {
         ares_gethostbyname(proc->ares_channels[*proc->ares_channel_id], http_hostname, AF_INET, ares_cb, ares_proc);
@@ -848,7 +856,8 @@ void data_processor (uint8_t *rec, int rec_len, struct ipfix_template *templ, vo
  * \param[out] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipfix_template_mgr *template_mgr, void **config) {
+int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfix_template_mgr *template_mgr, void **config)
+{
     struct proxy_config *conf;
     xmlDocPtr doc;
     xmlNodePtr config_root;
@@ -877,7 +886,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     conf->ares_channel_id = 0;
     conf->name_servers = NULL;
 
-    // Parse XML configuration: prelude
+    /* Parse XML configuration: prelude */
     doc = xmlReadMemory(params, strlen(params), "nobase.xml", NULL, 0);
     if (doc == NULL) {
         MSG_ERROR(msg_module, "Could not parse plugin configuration");
@@ -897,11 +906,11 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             return -1;
         }
 
-        // Parse XML configuration: count number of proxy ports specified
+        /* Parse XML configuration: count number of proxy ports specified */
         config_root = node->xmlChildrenNode;
         node = config_root;
         while (node != NULL) {
-            // Skip processing this node in case it's a comment
+            /* Skip processing this node in case it's a comment */
             if (node->type == XML_COMMENT_NODE) {
                 node = node->next;
                 continue;
@@ -910,7 +919,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
                 char *proxy_port_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
-                // Only consider this node if its value is non-empty and not longer than 5 characters
+                /* Only consider this node if its value is non-empty and not longer than 5 characters */
                 if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
                     ++conf->proxy_port_count;
                 }
@@ -919,7 +928,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             } else if (xmlStrcmp(node->name, (const xmlChar *) "nameServer") == 0) {
                 char *name_server_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
-                // Only consider this node if its value is non-empty and features at least one dot
+                /* Only consider this node if its value is non-empty and features at least one dot */
                 if (strlen(name_server_str) > 0 && strstr(name_server_str, ".") != NULL) {
                     struct ares_addr_node *ns = calloc(1, sizeof(struct ares_addr_node));
                     if (!ns) {
@@ -972,7 +981,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             } else if (xmlStrcmp(node->name, (const xmlChar *) "statInterval") == 0) {
                 char *stat_interval_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
-                // Only consider this node if its value is non-empty
+                /* Only consider this node if its value is non-empty */
                 if (strlen(stat_interval_str) > 0) {
                     conf->stat_interval = atoi(stat_interval_str);
                 }
@@ -985,13 +994,13 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             node = node->next;
         }
 
-        // Fall back to default settings if when no proxy ports have been specified in plugin configuration
+        /* Fall back to default settings if when no proxy ports have been specified in plugin configuration */
         if (conf->proxy_port_count == 0) {
             MSG_NOTICE(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
             conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
             conf->proxy_ports = default_proxy_ports;
         } else {
-            // Parse XML configuration: parse proxy ports
+            /* Parse XML configuration: parse proxy ports */
             conf->proxy_ports = calloc(conf->proxy_port_count, sizeof(int));
             if (!conf->proxy_ports) {
                 MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
@@ -1005,7 +1014,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
                 if (xmlStrcmp(node->name, (const xmlChar *) "proxyPort") == 0) {
                     char *proxy_port_str = (char *) xmlNodeGetContent(node->xmlChildrenNode);
 
-                    // Only consider this node if its value is non-empty and not longer than 5 characters
+                    /* Only consider this node if its value is non-empty and not longer than 5 characters */
                     if (strlen(proxy_port_str) > 0 && strlen(proxy_port_str) <= 5) {
                         conf->proxy_ports[i] = atoi(proxy_port_str);
                         ++i;
@@ -1030,11 +1039,11 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
      * more than 5 digits.
      */
     char proxy_port_str[(conf->proxy_port_count * 5) + ((conf->proxy_port_count - 1) * 2) + 1];
-    char buf[5 + 1] = ""; // Port numbers can feature at most 5 digits, +1 null-terminating character
+    char buf[5 + 1] = ""; /* Port numbers can feature at most 5 digits, +1 null-terminating character */
     for (i = 0; i < conf->proxy_port_count; ++i) {
         sprintf(buf, "%d", conf->proxy_ports[i]);
         if (i == 0) {
-            strncpy_safe(proxy_port_str, buf, 5 + 1); // Port numbers can feature at most 5 digits, +1 null-terminating character
+            strncpy_safe(proxy_port_str, buf, 5 + 1); /* Port numbers can feature at most 5 digits, +1 null-terminating character */
         } else {
             strcat(proxy_port_str, ", ");
             strcat(proxy_port_str, buf);
@@ -1043,7 +1052,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
 
     MSG_NOTICE(msg_module, "Proxy port(s): %s", proxy_port_str);
 
-    // Print name servers in case they have been specified explicitly
+    /* Print name servers in case they have been specified explicitly */
     if (conf->name_servers) {
         struct ares_addr_node *ns = conf->name_servers;
         char ns_str[256] = "";
@@ -1056,7 +1065,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             }
 
             if (strlen(ns_str) == 0) {
-                strncpy_safe(ns_str, ntop_buf, strlen(ntop_buf) + 1); // +1 null-terminating character
+                strncpy_safe(ns_str, ntop_buf, strlen(ntop_buf) + 1); /* +1 null-terminating character */
             } else {
                 strcat(ns_str, ", ");
                 strcat(ns_str, ntop_buf);
@@ -1068,7 +1077,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
         MSG_NOTICE(msg_module, "Name server(s): %s", ns_str);
     }
 
-    // Initialize statistics thread
+    /* Initialize statistics thread */
     if (conf->stat_interval > 0) {
         MSG_NOTICE(msg_module, "Statistics thread execution interval: %u sec.", conf->stat_interval);
 
@@ -1081,7 +1090,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
         MSG_NOTICE(msg_module, "Statistics thread disabled");
     }
 
-    // Initialize c-ares
+    /* Initialize c-ares */
     struct ares_options ares_opts;
     memset(&ares_opts, 0, sizeof(ares_opts));
     ares_opts.timeout = 1;
@@ -1090,7 +1099,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
     for (i = 0; i < ARES_CHANNELS; ++i) {
         int ares_optmask = ARES_OPT_FLAGS | ARES_OPT_TIMEOUT | ARES_OPT_TRIES;
 
-        // Set flag in case name servers have been specified
+        /* Set flag in case name servers have been specified */
         if (conf->name_servers) {
             ares_optmask |= ARES_OPT_SERVERS;
         }
@@ -1101,7 +1110,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
         if (ares_status != ARES_SUCCESS) {
             MSG_ERROR(msg_module, "Unable to initialize c-ares (channel ID: %u)", i);
 
-            // Destroying all previously initialized channels
+            /* Destroying all previously initialized channels */
             uint8_t j;
             for (j = 0; j < i; ++j) {
                 ares_destroy(conf->ares_channels[j]);
@@ -1117,7 +1126,7 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
             return -1;
         }
 
-        // Set name servers in case they have been specified explicitly
+        /* Set name servers in case they have been specified explicitly */
         if (conf->name_servers) {
             ares_status = ares_set_servers(conf->ares_channels[i], conf->name_servers);
 
@@ -1127,19 +1136,19 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
         }
     }
 
-    // Clean up name server list
+    /* Clean up name server list */
     if (conf->name_servers) {
         ares_destroy_name_server_list(conf->name_servers);
     }
 
-    // Initialize (empty) hashmap
+    /* Initialize (empty) hashmap */
     conf->templ_stats = NULL;
 
     *config = conf;
 
     MSG_NOTICE(msg_module, "Plugin initialization completed successfully");
 
-    // Plugin successfully initialized
+    /* Plugin successfully initialized */
     return 0;
 }
 
@@ -1153,7 +1162,8 @@ int intermediate_init (char *params, void *ip_config, uint32_t ip_id, struct ipf
  * \param[out] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int intermediate_process_message (void *config, void *message) {
+int intermediate_process_message(void *config, void *message)
+{
     struct proxy_config *conf;
     struct proxy_processor proc;
     struct ipfix_message *msg, *new_msg;
@@ -1168,7 +1178,7 @@ int intermediate_process_message (void *config, void *message) {
 
     MSG_DEBUG(msg_module, "Received IPFIX message...");
 
-    // Check whether source was closed
+    /* Check whether source was closed */
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
         // MSG_WARNING(msg_module, "Source closed; skipping IPFIX message...");
         pass_message(conf->ip_config, msg);
@@ -1214,7 +1224,7 @@ int intermediate_process_message (void *config, void *message) {
         return 1;
     }
 
-    // Allocate memory for new IPFIX message
+    /* Allocate memory for new IPFIX message */
     new_msg = calloc(1, sizeof(struct ipfix_message));
     if (!new_msg) {
         MSG_ERROR(msg_module, "Unable to allocate memory (%s:%d)", __FILE__, __LINE__);
@@ -1222,19 +1232,19 @@ int intermediate_process_message (void *config, void *message) {
         return 1;
     }
 
-    // Copy original IPFIX header
+    /* Copy original IPFIX header */
     memcpy(proc.msg, msg->pkt_header, IPFIX_HEADER_LENGTH);
     new_msg->pkt_header = (struct ipfix_header *) proc.msg;
     proc.offset = IPFIX_HEADER_LENGTH;
 
-    // Initialize processing structure
+    /* Initialize processing structure */
     proc.ares_channels = &conf->ares_channels[0];
     proc.ares_channel_id = &conf->ares_channel_id;
     proc.odid = msg->input_info->odid;
-    proc.key = tm_key_create(info->odid, conf->ip_id, 0); // Template ID (0) will be overwritten in a later stage
+    proc.key = tm_key_create(info->odid, conf->ip_id, 0); /* Template ID (0) will be overwritten in a later stage */
     proc.plugin_conf = config;
 
-    // Process template sets
+    /* Process template sets */
     MSG_DEBUG(msg_module, "Processing template sets...");
     proc.type = TM_TEMPLATE;
     for (i = 0; i < MSG_MAX_TEMPL_SETS && msg->templ_set[i]; ++i) {
@@ -1245,54 +1255,54 @@ int intermediate_process_message (void *config, void *message) {
          */
         template_set_process_records(msg->templ_set[i], proc.type, &templates_stat_processor, (void *) &proc);
 
-        // Add template set header, and update offset and length
+        /* Add template set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->templ_set[i]->header), 4);
         proc.offset += 4;
         proc.length = 4;
 
-        // Process all template set records
+        /* Process all template set records */
         template_set_process_records(msg->templ_set[i], proc.type, &templates_processor, (void *) &proc);
 
-        // Check whether a new template set was added by 'templates_processor'
+        /* Check whether a new template set was added by 'templates_processor' */
         if (proc.offset == prev_offset + 4) { // No new template set record was added
             proc.offset = prev_offset;
-        } else { // New template set was added; add it to data structure as well
+        } else { /* New template set was added; add it to data structure as well */
             new_msg->templ_set[tsets] = (struct ipfix_template_set *) ((uint8_t *) proc.msg + prev_offset);
             new_msg->templ_set[tsets]->header.length = htons(proc.length);
             tsets++;
         }
     }
 
-    // Demarcate end of templates in set
+    /* Demarcate end of templates in set */
     new_msg->templ_set[tsets] = NULL;
 
-    // Process option template sets
+    /* Process option template sets */
     MSG_DEBUG(msg_module, "Processing option template sets...");
     proc.type = TM_OPTIONS_TEMPLATE;
     for (i = 0; i < MSG_MAX_OTEMPL_SETS && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
 
-        // Add template set header, and update offset and length
+        /* Add template set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->opt_templ_set[i]->header), 4);
         proc.offset += 4;
         proc.length = 4;
 
         template_set_process_records((struct ipfix_template_set *) msg->opt_templ_set[i], proc.type, &templates_processor, (void *) &proc);
 
-        // Check whether a new options template set was added by 'templates_processor'
+        /* Check whether a new options template set was added by 'templates_processor' */
         if (proc.offset == prev_offset + 4) {
             proc.offset = prev_offset;
-        } else { // New options template set was added; add it to data structure as well
+        } else { /* New options template set was added; add it to data structure as well */
             new_msg->opt_templ_set[otsets] = (struct ipfix_options_template_set *) ((uint8_t *) proc.msg + prev_offset);
             new_msg->opt_templ_set[otsets]->header.length = htons(proc.length);
             otsets++;
         }
     }
 
-    // Demarcate end of option templates in set
+    /* Demarcate end of option templates in set */
     new_msg->opt_templ_set[otsets] = NULL;
 
-    // Process data sets
+    /* Process data sets */
     MSG_DEBUG(msg_module, "Processing data sets...");
     for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
         templ = msg->data_couple[i].data_template;
@@ -1310,30 +1320,30 @@ int intermediate_process_message (void *config, void *message) {
         new_templ = tm_get_template(conf->tm, proc.key);
         if (!new_templ) {
             // MSG_WARNING(msg_module, "Could not retrieve template from template manager (ODID: %u, IP ID: %u, template ID: %u)", info->odid, conf->ip_id, templ->template_id);
-            // Assume that template was not modified by this plugin if new template was not registered in template manager
+            /* Assume that template was not modified by this plugin if new template was not registered in template manager */
             new_templ = templ;
         }
 
-        // Add data set header, and update offset and length
+        /* Add data set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->data_couple[i].data_set->header), 4);
         proc.offset += 4;
         proc.length = 4;
 
-        // Update 'data_couple' by adjusting pointers to updated data structures
+        /* Update 'data_couple' by adjusting pointers to updated data structures */
         new_msg->data_couple[new_i].data_set = ((struct ipfix_data_set *) ((uint8_t *) proc.msg + proc.offset - 4));
         new_msg->data_couple[new_i].data_template = new_templ;
 
-        // Increase number of references to template
+        /* Increase number of references to template */
         new_templ->last_message = templ->last_message;
         new_templ->last_transmission = templ->last_transmission;
         tm_template_reference_inc(new_templ);
 
         data_set_process_records(msg->data_couple[i].data_set, templ, &data_processor, (void *) &proc);
 
-        // Wait for all domain name resolutions to have completed
+        /* Wait for all domain name resolutions to have completed */
         ares_wait_all_channels(&conf->ares_channels[0]);
 
-        // Add padding bytes, if necessary
+        /* Add padding bytes, if necessary */
         if (proc.length % 4 != 0) {
             int padding_length = 4 - (proc.length % 4);
 
@@ -1352,10 +1362,10 @@ int intermediate_process_message (void *config, void *message) {
         ++new_i;
     }
 
-    // Demarcate end of data records in set
+    /* Demarcate end of data records in set */
     new_msg->data_couple[new_i].data_set = NULL;
 
-    // Don't send empty IPFIX messages (i.e., message includes no templates, option templates, or data records)
+    /* Don't send empty IPFIX messages (i.e., message includes no templates, option templates, or data records) */
     if (proc.offset == IPFIX_HEADER_LENGTH) {
         MSG_WARNING(msg_module, "Empty IPFIX message detected; dropping message");
         free(proc.key);
@@ -1365,7 +1375,7 @@ int intermediate_process_message (void *config, void *message) {
         return 0;
     }
 
-    // Update IPFIX message length (in header)
+    /* Update IPFIX message length (in header) */
     new_msg->pkt_header->length = htons(proc.offset);
     new_msg->input_info = msg->input_info;
     new_msg->templ_records_count = msg->templ_records_count;
@@ -1388,18 +1398,19 @@ int intermediate_process_message (void *config, void *message) {
  * \param[in] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int intermediate_close (void *config) {
+int intermediate_close(void *config)
+{
     struct proxy_config *conf;
     conf = (struct proxy_config *) config;
 
-    // Clean up templ_stats hashmap
+    /* Clean up templ_stats hashmap */
     struct templ_stats_elem_t *current_templ_stats, *tmp;
     HASH_ITER(hh, conf->templ_stats, current_templ_stats, tmp) {
         HASH_DEL(conf->templ_stats, current_templ_stats);
         free(current_templ_stats); 
     }
 
-    // Stop statistics thread
+    /* Stop statistics thread */
     if (conf->stat_interval > 0) {
         conf->stat_done = 1;
         pthread_kill(conf->stat_thread, SIGUSR1);

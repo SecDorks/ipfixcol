@@ -74,13 +74,14 @@
 #include "proxy_stat_thread.h"
 #include "proxy.h"
 
-// Identifier for MSG_* macros
+/* Identifier for MSG_* macros */
 static char *msg_module = "proxy_stat_thread";
 
 /**
  * \brief Dummy SIGUSR1 signal handler
  */
-void term_signal_handler (int sig) {
+void term_signal_handler(int sig)
+{
     (void) sig;
 }
 
@@ -90,23 +91,24 @@ void term_signal_handler (int sig) {
  * \param[in] config configuration structure for thread
  * \return NULL once thread shutdown is signaled by proxy plugin
  */
-void *stat_thread (void* config) {
+void *stat_thread(void* config)
+{
     struct proxy_config *conf = (struct proxy_config *) config;
     struct sigaction action;
 
-    // Catch SIGUSR1
+    /* Catch SIGUSR1 */
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     action.sa_handler = term_signal_handler;
     sigaction(SIGUSR1, &action, NULL);
 
-    // Set thread name
+    /* Set thread name */
     prctl(PR_SET_NAME, "med:proxy:stats", 0, 0, 0);
 
     while (conf->stat_interval) {
         sleep(conf->stat_interval);
 
-        // Check whether thread should be killed (by proxy plugin)
+        /* Check whether thread should be killed (by proxy plugin) */
         if (conf->stat_done) {
             break;
         }

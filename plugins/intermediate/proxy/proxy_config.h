@@ -73,7 +73,7 @@
 #define TEMPL_MAX_LEN           100000
 #define VAR_LEN_ELEM_LEN        65535
 
-// IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name)
+/* IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name) */
 #define sourceTransportPort             { 0,       7,  2,  "sourceTransportPort" }
 #define sourceIPv4Address               { 0,       8,  4,  "sourceIPv4Address" }
 #define destinationTransportPort        { 0,      11,  2,  "destinationTransportPort" }
@@ -88,7 +88,7 @@
 #define origSourceIPv6Address           { 44913,  14, 16,  "origSourceIPv6Address" }
 #define origDestinationIPv6Address      { 44913,  15, 16,  "origDestinationIPv6Address" }
 
-// Zero-length fields are fields with variable lengths
+/* Zero-length fields are fields with variable lengths */
 #define inveaHttpHost                   { 39499,   1,  0,  "inveaHttpHost" }
 #define inveaHttpUrl                    { 39499,   2,  0,  "inveaHttpUrl" }
 
@@ -146,7 +146,7 @@ struct field_mapping IPv6_field_mappings[] = {
 };
 #define mapping_count               4
 
-// Detection of these ports will trigger domain name resolution
+/* Detection of these ports will trigger domain name resolution */
 int default_proxy_ports[] = {
     3128, 8080
 };

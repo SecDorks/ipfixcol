@@ -91,14 +91,14 @@ struct templ_stats_elem_t {
     UT_hash_handle hh;                  // Hash handle for internal hash functioning
 };
 
-// Stores plugin's internal configuration
+/* Stores plugin's internal configuration */
 struct proxy_config {
     char *params;
     void *ip_config;
     uint32_t ip_id;
     struct ipfix_template_mgr *tm;
 
-    // Variables for use by statistics thread
+    /* Variables for use by statistics thread */
     pthread_t stat_thread;
     uint8_t stat_done;
     uint16_t stat_interval;
@@ -107,10 +107,10 @@ struct proxy_config {
     uint64_t failed_resolutions;
     uint64_t skipped_resolutions;
 
-    // Variables for use by c-ares
-    ares_channel ares_channels[ARES_CHANNELS]; // Stores all c-ares channels
-    uint8_t ares_channel_id; // ID of last-used c-ares channel
-    struct ares_addr_node *name_servers; // Name servers for resolution, if specified explicitly
+    /* Variables for use by c-ares */
+    ares_channel ares_channels[ARES_CHANNELS];  // Stores all c-ares channels
+    uint8_t ares_channel_id;                    // ID of last-used c-ares channel
+    struct ares_addr_node *name_servers;        // Name servers for resolution, if specified explicitly
 
     /*
      * Hashmap for storing the IP version used in every template by template ID. We
@@ -134,11 +134,11 @@ struct proxy_processor {
     uint32_t length, odid;
     int type;
 
-    ares_channel *ares_channels; // Channel used for domain name resolutions
+    ares_channel *ares_channels;        // Channel used for domain name resolutions
     uint8_t *ares_channel_id;
     
-    struct proxy_config *plugin_conf; // Pointer to proxy_config, such that we don't have to store some pointers twice
-    struct ipfix_template_key *key; // Stores the key of a newly added template within the template manager
+    struct proxy_config *plugin_conf;   // Pointer to proxy_config, such that we don't have to store some pointers twice
+    struct ipfix_template_key *key;     // Stores the key of a newly added template within the template manager
 };
 
 struct proxy_ares_processor {
