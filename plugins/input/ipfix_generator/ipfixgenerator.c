@@ -171,7 +171,7 @@ int input_init(char *params, void **config)
     /* Speed control */
     conf->last_data_records_sent = 0;
     conf->last_speed_check = 0;
-    conf->sleep_time_usec = 10000;
+    conf->sleep_time_usec = 5000;
 
     /* Initialize input info data structure */
     conf->info = calloc(1, sizeof(struct input_info_file));
@@ -188,12 +188,15 @@ int input_init(char *params, void **config)
         return -1;
     }
 
+    /* Set default values */
+    conf->info->odid = DEFAULT_ODID;
+    conf->max_packets = DEFAULT_MAX_PACKETS;
+    conf->max_records = DEFAULT_MAX_RECORDS;
+    conf->target_fps = DEFAULT_FPS;
+
     node = xmlDocGetRootElement(doc);
     if (node == NULL) {
         MSG_NOTICE(msg_module, "Empty plugin configuration detected; falling back to default settings");
-        conf->info->odid = DEFAULT_ODID;
-        conf->max_packets = DEFAULT_MAX_PACKETS;
-        conf->target_fps = DEFAULT_FPS;
     } else {
         if (xmlStrcmp(node->name, (const xmlChar *) "ipfixgenerator") != 0) {
             MSG_ERROR(msg_module, "Bad plugin configuration detected (root node != 'proxy')");
