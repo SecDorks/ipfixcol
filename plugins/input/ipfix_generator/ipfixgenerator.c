@@ -45,10 +45,10 @@
 
 #include "ipfixgenerator.h"
 
-// API version constant
+/* API version constant */
 IPFIXCOL_API_VERSION;
 
-// Identifier for MSG_* macros
+/* Identifier for MSG_* macros */
 static char *msg_module = "ipfixgenerator";
 
 #include "ipfixgenerator_config.h"
@@ -61,7 +61,8 @@ static char *msg_module = "ipfixgenerator";
  * \param[in] id Field ID
  * \return Field speicification, or NULL upon failure
  */
-struct ipfix_ie *get_ie_ext_spec(uint16_t eid, uint16_t id) {
+struct ipfix_ie *get_ie_ext_spec(uint16_t eid, uint16_t id)
+{
     struct ipfix_ie *ie = NULL;
     int i;
     for (i = 0; i < all_fields_count; ++i) {
@@ -79,7 +80,8 @@ struct ipfix_ie *get_ie_ext_spec(uint16_t eid, uint16_t id) {
  * \param[in] s Pointer to the generated String
  * \param[in] len Length of the generated String
  */
-void generate_random_str(char *s, const int len) {
+void generate_random_str(char *s, const int len)
+{
     static const char alphanum[] = "abcdefghijklmnopqrstuvwxyz";
 
     int i;
@@ -97,7 +99,8 @@ void generate_random_str(char *s, const int len) {
  * \param[in] templ_set Template set to select record from
  * \return Pointer to randomly selected record
  */
-struct ipfix_template_record *select_random_templ_record(struct ipfix_template_set *templ_set) {
+struct ipfix_template_record *select_random_templ_record(struct ipfix_template_set *templ_set)
+{
     struct ipfix_template_record *templ_rec;
     uint8_t *p = (uint8_t*) &templ_set->first_record;
     uint8_t rec_count = 0;
@@ -135,7 +138,8 @@ struct ipfix_template_record *select_random_templ_record(struct ipfix_template_s
  * \param[in] val Integer value to be converted
  * \return Integer in network byte order
  */
-uint64_t htonll(uint64_t val) {
+uint64_t htonll(uint64_t val)
+{
     uint32_t val_1 = htonl(val >> 32);
     uint32_t val_2 = htonl((uint32_t) val);
     return ((uint64_t) val_2 << 32) + val_1;
@@ -148,7 +152,8 @@ uint64_t htonll(uint64_t val) {
  * \param[out] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int input_init(char *params, void **config) {
+int input_init(char *params, void **config)
+{
     xmlDocPtr doc;
     xmlNodePtr node;
 
@@ -275,7 +280,8 @@ int input_init(char *params, void **config) {
  * \return the length of packet on success, INPUT_CLOSE when some connection
  *  closed, INPUT_ERROR on error.
  */
-int get_packet(void *config, struct input_info** info, char **packet, int *source_status) {
+int get_packet(void *config, struct input_info** info, char **packet, int *source_status)
+{
     struct ipfixgenerator_config *conf;
     int i, j;
     uint8_t *msg;
@@ -610,7 +616,8 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
  * \param[in] config configuration structure
  * \return 0 on success, negative value otherwise
  */
-int input_close(void **config) {
+int input_close(void **config)
+{
     struct ipfixgenerator_config *conf;
 
     conf = (struct ipfixgenerator_config *) *config;
