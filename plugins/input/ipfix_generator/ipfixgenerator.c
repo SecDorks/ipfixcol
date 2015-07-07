@@ -114,7 +114,12 @@ struct ipfix_template_record *select_random_templ_record(struct ipfix_template_s
     }
 
     /* Select random record ID */
-    uint8_t selected_rec_id = rand() % rec_count;
+    uint8_t selected_rec_id;
+    if (rec_count == 0) {
+        selected_rec_id = 0;
+    } else {
+        selected_rec_id = rand() % rec_count;
+    }
 
     /* Obtain pointer to record */
     p = (uint8_t*) &templ_set->first_record;
@@ -177,6 +182,7 @@ int input_init(char *params, void **config)
     conf->info = calloc(1, sizeof(struct input_info_file));
     if (!conf->info) {
         MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        free(conf);
         return -1;
     }
 
@@ -184,6 +190,7 @@ int input_init(char *params, void **config)
     doc = xmlReadMemory(params, strlen(params), "nobase.xml", NULL, 0);
     if (doc == NULL) {
         MSG_ERROR(msg_module, "Could not parse plugin configuration");
+        free(conf->info);
         free(conf);
         return -1;
     }
@@ -487,6 +494,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
             struct ipfix_set_header *data_set_header = calloc(1, sizeof(struct ipfix_set_header));
             if (!data_set_header) {
                 MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+                free(msg);
                 return -1;
             }
 
@@ -557,6 +565,8 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
                                 char *s = calloc(ie->length + 1, sizeof(char));
                                 if (!s) {
                                     MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+                                    free(data_set_header);
+                                    free(msg);
                                     return -1;
                                 }
 
