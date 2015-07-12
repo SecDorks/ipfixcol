@@ -403,6 +403,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
             struct ipfix_template_set *templ_set = calloc(1, templ_set_len);
             if (!templ_set) {
                 MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+                free(msg);
                 return -1;
             }
 
