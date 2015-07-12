@@ -8,7 +8,7 @@
 # pidfile: /var/run/ipfixcol.pid
   
 prog="ipfixcol"
-params="-v 2 -d"
+params="-v 2 -d -S 5"
 
 start() {
 	# Check whether ipfixcol is running
