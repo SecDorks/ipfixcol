@@ -737,6 +737,9 @@ int convert_packet(char **packet, ssize_t *len, char *input_info)
 			if (*len >= htons(header->length)) {
 				seqNo[NF5_SEQ_N] += numOfFlowSamples;
 			}
+#else
+			/* Conversion error */
+			return -1;
 #endif
 			break; }
 
