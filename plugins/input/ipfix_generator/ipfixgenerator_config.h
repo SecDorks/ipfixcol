@@ -44,8 +44,8 @@
 #define IPFIXGENERATOR_CONFIG_H_
 
 /* IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name) */
-#define octetDeltaCount             { 0,      2,    IPFIX_TYPE_UNSIGNED64,      8,  "octetDeltaCount",          1 }
-#define packetDeltaCount            { 0,      3,    IPFIX_TYPE_UNSIGNED64,      8,  "packetDeltaCount",         1 }
+#define octetDeltaCount             { 0,      1,    IPFIX_TYPE_UNSIGNED64,      8,  "octetDeltaCount",          1 }
+#define packetDeltaCount            { 0,      2,    IPFIX_TYPE_UNSIGNED64,      8,  "packetDeltaCount",         1 }
 #define protocolIdentifier          { 0,      4,    IPFIX_TYPE_UNSIGNED8,       1,  "protocolIdentifier",       1 }
 #define sourceTransportPort         { 0,      7,    IPFIX_TYPE_UNSIGNED16,      2,  "sourceTransportPort",      1 }
 #define sourceIPv4Address           { 0,      8,    IPFIX_TYPE_IPV4ADDRESS,     4,  "sourceIPv4Address",        1 }
