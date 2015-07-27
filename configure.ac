@@ -17,6 +17,7 @@ AC_CONFIG_SUBDIRS([ base
 	plugins/input/nfdump
 	plugins/intermediate/geoip
 	plugins/intermediate/httpfieldmerge
+	plugins/input/ipfix_generator
 	plugins/intermediate/profiler
 	plugins/intermediate/profile_stats
 	plugins/intermediate/proxy
