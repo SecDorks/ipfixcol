@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I m4
 
-pluginsdir = $(pkgdatadir)/plugins
+pluginsdir = $(datadir)/ipfixcol/plugins
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
 sofile = $(pluginsdir)/ipfixcol-httpfieldmerge-inter.so
 
