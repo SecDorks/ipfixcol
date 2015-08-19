@@ -3,23 +3,11 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = README.md LICENSE
 
 SUBDIRS = base \
-	tools/fbitconvert \
 	tools/fbitdump \
+	tools/fbitconvert \
 	tools/fbitmerge \
 	tools/fbitexpire \
-	tools/profilesdaemon \
-	plugins/storage/fastbit \
-	plugins/storage/fastbit_compression \
-	plugins/storage/postgres \
-	plugins/storage/json \
 	plugins/input/ipfix_generator \
-	plugins/input/nfdump \
-	plugins/intermediate/geoip \
 	plugins/intermediate/httpfieldmerge \
-	plugins/intermediate/profiler \
-	plugins/intermediate/profile_stats \
 	plugins/intermediate/proxy \
-	plugins/intermediate/stats \
-	plugins/intermediate/uid
-
-# plugins/storage/unirec is not added to SUBDIRS due to its dependency on libtrap
+	plugins/storage/fastbit
