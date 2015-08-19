@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 
-pluginsdir = $(datadir)/ipfixcol/plugins
 internalcfg = $(DESTDIR)$(sysconfdir)/ipfixcol/internalcfg.xml
+ipfixconf = $(DESTDIR)/$(exec_prefix)/bin/ipfixconf
+pluginsdir = $(datadir)/ipfixcol/plugins
 sofile = $(pluginsdir)/ipfixcol-httpfieldmerge-inter.so
 
 AM_CPPFLAGS = -I$(top_srcdir)/headers
@@ -19,7 +20,7 @@ clean-local:
 .PHONY: install-data-hook
 install-data-hook:
 	@if [ -f "$(internalcfg)" ]; then \
-		ipfixconf add -c "$(internalcfg)" -p m -n httpfieldmerge -t httpfieldmerge -s "$(sofile)" -f; \
+		$(ipfixconf) add -c "$(internalcfg)" -p m -n httpfieldmerge -t httpfieldmerge -s "$(sofile)" -f; \
 	fi
 
 .PHONY: test
