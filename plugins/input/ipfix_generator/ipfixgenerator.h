@@ -52,10 +52,8 @@
 
 #include <ipfixcol.h>
 
-#define IPFIX_FIELD_SPECIFIER_LENGTH 4 // Define in upstream
-#define IPFIX_MSG_MAX_LENGTH 1500 // Define in upstream
-#define IPFIX_RECORD_HEADER_LENGTH 4 // Define in upstream
-#define IPFIX_SET_HEADER_LENGTH 4 // Define in upstream
+#define IPFIX_MSG_MAX_LENGTH 1500
+#define IPFIX_RECORD_HEADER_LENGTH 4 // Define in upstream?
 
 struct ipfixgenerator_config {
     time_t last_templates_transmission;

@@ -408,7 +408,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
             }
 
             templ_set->header.flowset_id = htons(IPFIX_TEMPLATE_FLOWSET_ID);
-            templ_set->header.length = IPFIX_SET_HEADER_LENGTH;
+            templ_set->header.length = sizeof(struct ipfix_set_header);
             conf->templ_set[conf->templ_sets_count] = templ_set;
 
             for (i = 0; i < templ_recs_generate_count; ++i) {
@@ -431,7 +431,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
                             templ_rec->fields[field_index] = ie;
 
                             /* Update set length in template set header */
-                            templ_set->header.length += IPFIX_FIELD_SPECIFIER_LENGTH;
+                            templ_set->header.length += sizeof(template_ie);
                         } else {
                             ie.ie.id = htons(all_fields[j].id | 0x8000);
                             ie.ie.length = htons(all_fields[j].length);
@@ -444,8 +444,9 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
                             ie.enterprise_number = htonl(all_fields[j].eid);
                             templ_rec->fields[field_index] = ie;
 
-                            /* Update set length in template set header */
-                            templ_set->header.length += IPFIX_FIELD_SPECIFIER_LENGTH + 4;
+                            /* Update set length in template set header; + 4 is
+                             * for enterprise number */
+                            templ_set->header.length += sizeof(template_ie) + 4;
                         }
 
                         ++field_index;
@@ -500,15 +501,15 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
             }
 
             data_set_header->flowset_id = templ_rec->template_id;
-            data_set_header->length = IPFIX_SET_HEADER_LENGTH;
+            data_set_header->length = sizeof(struct ipfix_set_header);
             uint8_t *data_set_header_len_p = msg + len + 2; /* + 2 is because length field is at offset '2' */
 
             /* 
              * Copy data set header to IPFIX message
              * Note: 'length' field will be updated later
              */
-            memcpy(msg + len, data_set_header, IPFIX_SET_HEADER_LENGTH);
-            len += IPFIX_SET_HEADER_LENGTH;
+            memcpy(msg + len, data_set_header, sizeof(struct ipfix_set_header));
+            len += sizeof(struct ipfix_set_header);
 
             while (data_record_generate_count > 0) {
                 /* Update statistics for sequence number generation */
