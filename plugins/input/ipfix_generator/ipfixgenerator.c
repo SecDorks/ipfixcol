@@ -329,10 +329,12 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
         conf->last_data_records_sent = conf->data_records_sent;
     } else if (now > conf->last_speed_check) {
         if (conf->data_records_sent - conf->last_data_records_sent > conf->target_fps) {
-            // MSG_DEBUG(msg_module, " >> Going slower... (fps: %u, sleep time: %u)", conf->data_records_sent - conf->last_data_records_sent, conf->sleep_time_usec);
+            // MSG_DEBUG(msg_module, " >> Going slower... (fps: %u, sleep time: %u)",
+            //         conf->data_records_sent - conf->last_data_records_sent, conf->sleep_time_usec);
             conf->sleep_time_usec += 100;
         } else {
-            // MSG_DEBUG(msg_module, " >> Going faster... (fps: %u, sleep time: %u)", conf->data_records_sent - conf->last_data_records_sent, conf->sleep_time_usec);
+            // MSG_DEBUG(msg_module, " >> Going faster... (fps: %u, sleep time: %u)",
+            //         conf->data_records_sent - conf->last_data_records_sent, conf->sleep_time_usec);
             conf->sleep_time_usec -= 100;
         }
 
@@ -365,6 +367,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
     header->observation_domain_id = htonl(DEFAULT_ODID);
 
     len = IPFIX_HEADER_LENGTH;
+    uint8_t data_records = 0;
 
     /*
      * Generate templates if...
@@ -486,8 +489,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
             struct ipfix_template_set *templ_set = conf->templ_set[i];
 
             /* Determine the number of data records to be generated (with a minimum of one) */
-            uint8_t data_record_generate_count = rand() % MAX_DATA_RECORDS;
-            data_record_generate_count = MAX(1, data_record_generate_count);
+            uint8_t data_record_generate_count = MAX(1, rand() % MAX_DATA_RECORDS);
 
             /* Select random template record to generate data records for */
             struct ipfix_template_record *templ_rec = select_random_templ_record(templ_set);
@@ -599,6 +601,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
                 }
 
                 --data_record_generate_count;
+                ++data_records;
             }
 
             /* Add padding bytes, if necessary */
@@ -622,7 +625,8 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
     /* Convert IPFIX message data structure to packet */
     *packet = (void *) msg;
 
-    MSG_DEBUG(msg_module, "Generated IPFIX message (seq. no: %u, len: %u)", ntohl(header->sequence_number), ntohs(header->length));
+    MSG_DEBUG(msg_module, "Generated IPFIX message (seq. no: %u, len: %u, data records: %u)",
+            ntohl(header->sequence_number), ntohs(header->length), data_records);
 
     /* Set appropriate source status */
     if (conf->info->status == SOURCE_STATUS_NEW) {
