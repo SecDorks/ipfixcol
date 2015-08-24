@@ -397,8 +397,8 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
             /* Generate new template set + records */
             /*
              * FIXME We currently allocate enough memory for being able to
-             * allocate the maximum number of IEs for this template. In case
-             * we know in advance how many IEs this template will feature,
+             * allocate the maximum number of IEs for this template. If we
+             * would know in advance how many IEs this template will feature,
              * the memory allocation can be a bit more precise.
              */
             uint16_t templ_set_len = sizeof(struct ipfix_template_set)
@@ -537,33 +537,33 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
 
                     switch (ie->type) {
                         case IPFIX_TYPE_UNSIGNED8: ;
-                                uint8_t val8 = rand() % 256;
-                                memcpy(msg + len, &val8, ie->length);
+                                uint8_t val_8 = rand() % 256;
+                                memcpy(msg + len, &val_8, ie->length);
                                 break;
                         case IPFIX_TYPE_UNSIGNED16: ;
-                                uint16_t val16 = rand() % 65536;
-                                val16 = htons(val16);
-                                memcpy(msg + len, &val16, ie->length);
+                                uint16_t val_16 = rand() % 65536;
+                                val_16 = htons(val_16);
+                                memcpy(msg + len, &val_16, ie->length);
                                 break;
                         case IPFIX_TYPE_UNSIGNED32: ;
-                                uint32_t val32 = rand() % 65536;
-                                val32 = htonl(val32);
-                                memcpy(msg + len, &val32, ie->length);
+                                uint32_t val_32 = rand() % 65536;
+                                val_32 = htonl(val_32);
+                                memcpy(msg + len, &val_32, ie->length);
                                 break;
                         case IPFIX_TYPE_UNSIGNED64: ;
-                                uint64_t val64 = rand() % 65536;
-                                val64 = htonll(val64);
-                                memcpy(msg + len, &val64, ie->length);
+                                uint64_t val_64 = rand() % 65536;
+                                val_64 = htonll(val_64);
+                                memcpy(msg + len, &val_64, ie->length);
                                 break;
                         case IPFIX_TYPE_IPV4ADDRESS: ;
-                                uint32_t valipv4 = rand() % 4294967296;
-                                valipv4 = htonl(valipv4);
-                                memcpy(msg + len, &valipv4, ie->length);
+                                uint32_t val_ipv4 = rand() % 4294967296;
+                                val_ipv4 = htonl(val_ipv4);
+                                memcpy(msg + len, &val_ipv4, ie->length);
                                 break;
                         case IPFIX_TYPE_IPV6ADDRESS: ;
-                                uint64_t valipv6 = rand() % 4294967296;
-                                valipv6 = htonll(valipv6);
-                                memcpy(msg + len, &valipv4, ie->length);
+                                uint64_t val_ipv6 = rand();
+                                val_ipv6 = htonll(val_ipv6);
+                                memcpy(msg + len, &val_ipv6, ie->length);
                                 break;
                         case IPFIX_TYPE_STRING: ;
                                 char *s = calloc(ie->length + 1, sizeof(char));
@@ -580,9 +580,43 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
                                 free(s);
                                 break;
                         case IPFIX_TYPE_TIME_MILLISEC: ; /* unsigned64 */
-                                uint64_t time_msec = now * 1000; /* now (time(NULL)) returns UNIX time in seconds */
+                                /* Check whether we have had a 'time' field before. If so, we assume
+                                 * it to be the previous field, such that the two 'time' fields have
+                                 * (rather) consecutive field IDs.
+                                 */
+                                uint64_t time_msec;
+                                if (field_index > 0) { /* Avoid negative array indices */
+                                    uint16_t prev_field_id = ntohs(templ_rec->fields[field_index - 1].ie.id);
+
+                                    /* We have no way to determine whether 'field_index - 1' is an
+                                     * enterprise ID, or a field ID (with enterprise ID '0').
+                                     */
+                                    uint32_t prev_field_pen = 0;
+
+                                    struct ipfix_ie *prev_ie = get_ie_ext_spec(prev_field_pen, prev_field_id);
+                                    if (!prev_ie) {
+                                        MSG_ERROR(msg_module, "Could not find IE specification (PEN: %u, ID: %u)", prev_field_pen, prev_field_id);
+                                        goto generate_new_timestamp;
+                                    }
+
+                                    if (prev_ie->type == IPFIX_TYPE_TIME_MILLISEC) {
+                                        uint8_t *prev_time_value = calloc(1, sizeof(prev_ie->length));
+                                        memcpy(prev_time_value, msg + len - prev_ie->length, prev_ie->length);
+                                        time_msec = (uint64_t) &prev_time_value + (rand() % 60);
+                                        free(prev_time_value);
+                                    } else {
+                                        goto generate_new_timestamp;
+                                    }
+                                } else {
+                                    goto generate_new_timestamp;
+                                }
+
+                                generate_new_timestamp:
+                                    time_msec = now * 1000; /* now (time(NULL)) returns UNIX time in seconds */
+
                                 time_msec = htonll(time_msec);
                                 memcpy(msg + len, &time_msec, ie->length);
+
                                 break;
                         default:
                                 MSG_ERROR(msg_module, "Invalid field type detected (%u)", ie->type);
