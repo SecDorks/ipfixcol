@@ -43,7 +43,7 @@
 #ifndef IPFIXGENERATOR_CONFIG_H_
 #define IPFIXGENERATOR_CONFIG_H_
 
-/* IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name, mandatory) */
+/* IPFIX Information Elements used within this plugin (PEN, ID, type, length (bytes), name, mandatory) */
 #define octetDeltaCount             { 0,      1,    IPFIX_TYPE_UNSIGNED64,      8,  "octetDeltaCount",          1 }
 #define packetDeltaCount            { 0,      2,    IPFIX_TYPE_UNSIGNED64,      8,  "packetDeltaCount",         1 }
 #define protocolIdentifier          { 0,      4,    IPFIX_TYPE_UNSIGNED8,       1,  "protocolIdentifier",       1 }

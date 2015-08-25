@@ -138,7 +138,7 @@ struct ipfix_template_record *select_random_templ_record(struct ipfix_template_s
 }
 
 /**
- * \brief Converts a uint64_t value to network byte order
+ * \brief Converts a uint64_t value from host byte order to network byte order
  *
  * \param[in] val Integer value to be converted
  * \return Integer in network byte order
@@ -148,6 +148,17 @@ uint64_t htonll(uint64_t val)
     uint32_t val_1 = htonl(val >> 32);
     uint32_t val_2 = htonl((uint32_t) val);
     return ((uint64_t) val_2 << 32) + val_1;
+}
+
+/**
+ * \brief Converts a uint64_t value from network byte order to host byte order
+ *
+ * \param[in] val Integer value to be converted
+ * \return Integer in host byte order
+ */
+uint64_t ntohll(uint64_t val)
+{
+    return htonll(val);
 }
 
 /**
@@ -309,7 +320,7 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
     uint16_t len;
 
     conf = (struct ipfixgenerator_config *) config;
-    time_t now = time(NULL);
+    time_t now = time(NULL); /* UNIX time in seconds */
 
     /* Check whether generation must be stopped */
     if ((conf->max_packets > 0 && conf->packets_sent >= conf->max_packets)
@@ -596,27 +607,23 @@ int get_packet(void *config, struct input_info** info, char **packet, int *sourc
                                     struct ipfix_ie *prev_ie = get_ie_ext_spec(prev_field_pen, prev_field_id);
                                     if (!prev_ie) {
                                         MSG_ERROR(msg_module, "Could not find IE specification (PEN: %u, ID: %u)", prev_field_pen, prev_field_id);
-                                        goto generate_new_timestamp;
+                                        time_msec = now * 1000;
                                     }
 
+                                    /* If the previous field was of type IPFIX_TYPE_TIME_MILLISEC,
+                                     * use a slightly different algorithm for setting the (end) time
+                                     */
                                     if (prev_ie->type == IPFIX_TYPE_TIME_MILLISEC) {
-                                        uint8_t *prev_time_value = calloc(1, sizeof(prev_ie->length));
-                                        memcpy(prev_time_value, msg + len - prev_ie->length, prev_ie->length);
-                                        time_msec = (uint64_t) &prev_time_value + (rand() % 60);
-                                        free(prev_time_value);
+                                        time_msec = (now + rand() % 60) * 1000;
                                     } else {
-                                        goto generate_new_timestamp;
+                                        time_msec = now * 1000;
                                     }
                                 } else {
-                                    goto generate_new_timestamp;
+                                    time_msec = now * 1000;
                                 }
-
-                                generate_new_timestamp:
-                                    time_msec = now * 1000; /* now (time(NULL)) returns UNIX time in seconds */
 
                                 time_msec = htonll(time_msec);
                                 memcpy(msg + len, &time_msec, ie->length);
-
                                 break;
                         default:
                                 MSG_ERROR(msg_module, "Invalid field type detected (%u)", ie->type);
