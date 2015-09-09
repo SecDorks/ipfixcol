@@ -2028,21 +2028,21 @@
 		<id>403</id>
 		<name>originalExporterIPv4Address</name>
 		<dataType>ipv4Address</dataType>
-		<semantics>identifier</semantics>
+		<semantic>identifier</semantic>
 	</element>
 	<element>
 		<enterprise>0</enterprise>
 		<id>404</id>
 		<name>originalExporterIPv6Address</name>
 		<dataType>ipv6Address</dataType>
-		<semantics>identifier</semantics>
+		<semantic>identifier</semantic>
 	</element>
 	<element>
 		<enterprise>0</enterprise>
 		<id>405</id>
 		<name>originalObservationDomainId</name>
 		<dataType>unsigned32</dataType>
-		<semantics>identifier</semantics>
+		<semantic>identifier</semantic>
 	</element>
 
 	<!-- Masaryk University -->
