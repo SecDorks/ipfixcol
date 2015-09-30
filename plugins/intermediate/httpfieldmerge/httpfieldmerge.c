@@ -306,7 +306,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
     }
 
     /* Replace enterprise-specific fields by vendors with 'unified' fields */
-    /* 0. Copy original template record */
+    /* Copy original template record */
     new_rec = calloc(1, rec_len);
     if (!new_rec) {
         MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
@@ -315,7 +315,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
 
     memcpy(new_rec, old_rec, rec_len);
 
-    /* 1. Find HTTP fields (if present) and replace them */
+    /* Find HTTP fields (if present) and replace them */
     struct field_mapping *field_mappings;
     struct ipfix_entity *target_field;
     uint16_t count = 0, index = 0;
@@ -401,7 +401,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
         }
     }
 
-    /* 2. Store it in template manager */
+    /* Store it in template manager */
     proc->key->tid = template_id;
 
     if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
@@ -414,7 +414,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
         }
     }
 
-    /* 3. Add new record to message */
+    /* Add new record to message */
     memcpy(proc->msg + proc->offset, new_rec, rec_len);
     proc->offset += rec_len;
     proc->length += rec_len;
@@ -712,6 +712,11 @@ int intermediate_process_message(void *config, void *message)
     new_msg->opt_templ_records_count = msg->opt_templ_records_count;
     new_msg->data_records_count = msg->data_records_count;
     new_msg->source_status = msg->source_status;
+    new_msg->live_profile = msg->live_profile;
+    new_msg->plugin_id = msg->plugin_id;
+    new_msg->plugin_status = msg->plugin_status;
+    new_msg->metadata = msg->metadata;
+    msg->metadata = NULL;
 
     free(proc.key);
 
