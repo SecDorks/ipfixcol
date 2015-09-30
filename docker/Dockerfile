@@ -2,9 +2,9 @@
 # It is assumed that three files are present on the same file system level
 # as this file:
 #
-#   rs_intercfg.xml
-#   rs_ipfix-elements.xml
-#   rs_startup.xml
+#   internalcfg.xml
+#   ipfix-elements.xml
+#   startup.xml
 #
 # These files will be copied to the container and used for configuring IPFIXcol.
 # 
@@ -130,24 +130,24 @@ RUN rm -r *
 RUN mkdir /etc/ipfixcol
 
 # Add IPFIXcol config files
-COPY rs_internalcfg.xml /etc/ipfixcol/
-COPY rs_ipfix-elements.xml /etc/ipfixcol/
-COPY rs_startup.xml /etc/ipfixcol/
+COPY internalcfg.xml /etc/ipfixcol/
+COPY ipfix-elements.xml /etc/ipfixcol/
+COPY startup.xml /etc/ipfixcol/
 
 # Create dedicated user for running IPFIXcol
 RUN adduser ipfixcol --uid 1010 --no-create-home --disabled-password --disabled-login --gecos ""
 
 # Create directory for storing FastBit data
-RUN mkdir -p /var/db/rs-app/fastbit/
-RUN chown -R ipfixcol:ipfixcol /var/db/rs-app/fastbit/
+RUN mkdir -p /tmp/fastbit/
+RUN chown -R ipfixcol:ipfixcol /tmp/fastbit/
 
 # Run all subsequent commands as user 'ipfixcol'
 USER ipfixcol
 
 # Run IPFIXcol
-CMD ["ipfixcol", "-c", "/etc/ipfixcol/rs_startup.xml", "-e", "/etc/ipfixcol/rs_ipfix-elements.xml", "-i", "/etc/ipfixcol/rs_internalcfg.xml"]
+CMD ["ipfixcol", "-c", "/etc/ipfixcol/startup.xml", "-e", "/etc/ipfixcol/ipfix-elements.xml", "-i", "/etc/ipfixcol/internalcfg.xml"]
 
 # Bind ports to host system
 EXPOSE 3055
-EXPOSE 3056
+# EXPOSE 3056
 # EXPOSE 3057
