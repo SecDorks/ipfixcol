@@ -457,12 +457,12 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
     }
 
     /* Add the missing elements to the template: */
-    /* 0. Copy original template record */
+    /* Copy original template record */
     new_rec = calloc(1, rec_len + (orig_fields_to_add * 4) + (orig_fields_to_add * 4)); // ID + length = 4 bytes, PEN = 4 bytes
     memcpy(new_rec, old_rec, rec_len);
     new_rec_len = rec_len;
 
-    /* 1. Update (new) template record (ID + length = 4 bytes) */
+    /* Update (new) template record (ID + length = 4 bytes) */
     if (templ_stats->ipv4) {
         for (i = 0; i < orig_fields_count; ++i) {
             if (orig_fields_IPv4[i].pen == 0) {
@@ -521,7 +521,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
         }
     }
 
-    /* 2. Generate new template and store it in template manager */
+    /* Generate new template and store it in template manager */
     uint16_t template_id_new = ntohs(new_rec->template_id);
     proc->key->tid = template_id_new;
     new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
@@ -531,7 +531,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
         MSG_ERROR(msg_module, "Failed to add template to template manager");
     }
 
-    /* 3. Add new record to message */
+    /* Add new record to message */
     memcpy(proc->msg + proc->offset, new_rec, new_rec_len);
     proc->offset += new_rec_len;
     proc->length += new_rec_len;
@@ -1382,6 +1382,11 @@ int intermediate_process_message(void *config, void *message)
     new_msg->opt_templ_records_count = msg->opt_templ_records_count;
     new_msg->data_records_count = msg->data_records_count;
     new_msg->source_status = msg->source_status;
+    new_msg->live_profile = msg->live_profile;
+    new_msg->plugin_id = msg->plugin_id;
+    new_msg->plugin_status = msg->plugin_status;
+    new_msg->metadata = msg->metadata;
+    msg->metadata = NULL;
 
     free(proc.key);
 
