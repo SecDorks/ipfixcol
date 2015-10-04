@@ -104,23 +104,23 @@
 static uint16_t netflow_v5_template[NETFLOW_V5_TEMPLATE_LEN/2]={\
 		IPFIX_TEMPLATE_FLOWSET_ID,   NETFLOW_V5_TEMPLATE_LEN,\
 		IPFIX_MIN_RECORD_FLOWSET_ID, NETFLOW_V5_NUM_OF_FIELDS,
-		SRC_IPV4_ADDR, 				 BYTES_4,\
-		DST_IPV4_ADDR, 				 BYTES_4,\
-		NEXTHOP_IPV4_ADDR, 			 BYTES_4,\
-		INGRESS_INTERFACE, 			 BYTES_2,\
-		EGRESS_INTERFACE, 			 BYTES_2,\
-		PACKETS, 					 BYTES_4,\
-		OCTETS, 					 BYTES_4,\
-		FLOW_START, 				 BYTES_8,\
-		FLOW_END, 					 BYTES_8,\
-		SRC_PORT, 					 BYTES_2,\
-		DST_PORT, 					 BYTES_2,\
-		PADDING, 					 BYTES_1,\
-		TCP_FLAGS, 					 BYTES_1,\
-		PROTO, 						 BYTES_1,\
-		TOS, 						 BYTES_1,\
-		SRC_AS, 					 BYTES_2,\
-		DST_AS, 					 BYTES_2
+		SRC_IPV4_ADDR,               BYTES_4,\
+		DST_IPV4_ADDR,               BYTES_4,\
+		NEXTHOP_IPV4_ADDR,           BYTES_4,\
+		INGRESS_INTERFACE,           BYTES_2,\
+		EGRESS_INTERFACE,            BYTES_2,\
+		PACKETS,                     BYTES_4,\
+		OCTETS,                      BYTES_4,\
+		FLOW_START,                  BYTES_8,\
+		FLOW_END,                    BYTES_8,\
+		SRC_PORT,                    BYTES_2,\
+		DST_PORT,                    BYTES_2,\
+		PADDING,                     BYTES_1,\
+		TCP_FLAGS,                   BYTES_1,\
+		PROTO,                       BYTES_1,\
+		TOS,                         BYTES_1,\
+		SRC_AS,                      BYTES_2,\
+		DST_AS,                      BYTES_2
 };
 
 static uint16_t netflow_v5_data_header[2] = {\
@@ -563,7 +563,6 @@ int unpack_enterprise_elements(struct ipfix_set_header *template_set, uint32_t r
 int convert_packet(char **packet, ssize_t *len, uint16_t max_len, char *input_info)
 {
 	struct ipfix_header *header = (struct ipfix_header *) *packet;
-	uint16_t flow_sample_count = 0;
 	uint16_t offset = 0;
 	info_list = (struct input_info_list *) input_info;
 
@@ -731,7 +730,7 @@ int convert_packet(char **packet, ssize_t *len, uint16_t max_len, char *input_in
 			uint64_t unix_nsecs = ntohl(*((uint32_t *) (((uint8_t *) header) + BYTES_12)));
 			uint64_t time_header = (unix_secs * 1000) + (unix_nsecs / 1000000);
 
-			flow_sample_count = MIN(ntohs(header->length), NETFLOW_V5_MAX_RECORD_COUNT);
+			uint16_t flow_sample_count = MIN(ntohs(header->length), NETFLOW_V5_MAX_RECORD_COUNT);
 
 			/* Header modification */
 			header->export_time = header->sequence_number;
@@ -781,7 +780,7 @@ int convert_packet(char **packet, ssize_t *len, uint16_t max_len, char *input_in
 		default:
 #ifdef ENABLE_SFLOW
 			/* Conversion from sflow to Netflow v5-like IPFIX packet */
-			flow_sample_count = Process_sflow(*packet, *len);
+			uint16_t flow_sample_count = Process_sflow(*packet, *len);
 
 			/* Observation domain ID is unknown */
 			header->observation_domain_id = 0;
