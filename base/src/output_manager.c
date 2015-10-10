@@ -82,7 +82,8 @@ struct input_info_node *input_info_list = NULL; /* Pointer to first node in list
  *
  * \param[in] node input_info object to add to list
  */
-void add_input_info(struct input_info *node) {
+void add_input_info(struct input_info *node)
+{
 	struct input_info_node *aux_node = input_info_list;
 
 	/* Find last position in linked list */
@@ -104,22 +105,30 @@ void add_input_info(struct input_info *node) {
 }
 
 /**
- * \brief Retrieve input_info_node (containing input_info structure) from
- * input_info_list, based on provided ODID
+ * \brief Removes input_info from the input_info_list
  *
- * \param[in] odid ODID to retrieve input_info for
+ * \param[in] node input_info structure to be removed from the list
  */
-struct input_info_node *get_input_info_node(uint32_t odid) {
+void remove_input_info(struct input_info *node)
+{
 	struct input_info_node *aux_node = input_info_list;
-	while (aux_node) {
-		if (aux_node->input_info->odid == odid) {
-			return aux_node;
-		}
+	struct input_info_node *prev_node = NULL;
 
+	/* Find the position of input info node cotaining the node in the linked list */
+	while (aux_node && aux_node->input_info != node) {
+		prev_node = aux_node;
 		aux_node = aux_node->next;
 	}
 
-	return NULL;
+	/* Delete it from the list */
+	if (prev_node == NULL) {
+		input_info_list = aux_node->next;
+	} else {
+		prev_node->next = aux_node->next;
+	}
+
+	/* Delete it from the memory */
+	free(aux_node);
 }
 
 /**
@@ -354,12 +363,6 @@ static void *output_manager_plugin_thread(void* config)
 			/* Stop manager */
 			break;
 		}
-		/* Check whether we have a pointer to the input_info structure based on ODID */
-		struct input_info_node *input_info_node = get_input_info_node(msg->input_info->odid);
-		if (input_info_node == NULL) {
-			/* No reference to input_info structure for this ODID; add it */
-			add_input_info(msg->input_info);
-		}
 
 		odid = (conf->perman_odid_merge || conf->manager_mode == OM_SINGLE)
 				? 0 : msg->input_info->odid;
@@ -389,10 +392,15 @@ static void *output_manager_plugin_thread(void* config)
 			/* New source, increment reference counter */
 			MSG_DEBUG(msg_module, "[%u] New source", data_config->observation_domain_id);
 			data_config->references++;
+			/* Add input info for the statistics thread to read */
+			add_input_info(msg->input_info);
 		} else if (msg->source_status == SOURCE_STATUS_CLOSED) {
 			/* Source closed, decrement reference counter */
 			MSG_DEBUG(msg_module, "[%u] Closed source", data_config->observation_domain_id);
 			data_config->references--;
+
+			/* Remove input_info from statistics */
+			remove_input_info(msg->input_info);
 
 			if (data_config->references == 0) {
 				/* No reference for this ODID, close DM */
@@ -848,6 +856,14 @@ int output_manager_create(configurator *plugins_config, int stat_interval, bool 
 	conf->stat_interval = stat_interval;
 	conf->plugins_config = plugins_config;
 	conf->perman_odid_merge = odid_merge;
+
+	if (conf->manager_mode == OM_SINGLE) {
+		MSG_NOTICE(msg_module, "Configuring Output Manager in single manager mode");
+	} else if (conf->manager_mode == OM_MULTIPLE) {
+		MSG_NOTICE(msg_module, "Configuring Output Manager in multiple manager mode");
+	} else {
+		/* Unknown mode */
+	}
 	
 	*config = conf;
 	return 0;
@@ -952,20 +968,19 @@ int output_manager_set_mode(enum om_mode mode)
 	if (conf->perman_odid_merge) {
 		/* Nothing can be changed, permanent single manager mode enabled */
 		if (mode == OM_MULTIPLE) {
-			MSG_WARNING(msg_module, "Unable to change output manager mode. "
+			MSG_WARNING(msg_module, "Unable to change Output Manager mode. "
 				"Single manager mode permanently enabled ('-M' argument)");
 		}
 		return 0;
 	}
 
 	if (conf->manager_mode == mode) {
-		/* Mode is still same */
+		/* Mode is still the same */
 		return 0;
 	}
 
 	if (conf->running) {
-		MSG_DEBUG(msg_module, "Stopping Output manager thread");
-		/* Stop output manager's thread */
+		MSG_DEBUG(msg_module, "Stopping Output Manager thread");
 		rbuffer_write(conf->in_queue, NULL, 1);
 		pthread_join(conf->thread_id, NULL);
 	}
@@ -977,14 +992,23 @@ int output_manager_set_mode(enum om_mode mode)
 		aux_config = aux_config->next;
 		data_manager_close(&tmp);
 	}
+
 	conf->data_managers = NULL;
 	conf->last = NULL;
 	conf->manager_mode = mode;
 
+	if (mode == OM_SINGLE) {
+		MSG_NOTICE(msg_module, "Switching Output Manager to single manager mode");
+	} else if (mode == OM_MULTIPLE) {
+		MSG_NOTICE(msg_module, "Switching Output Manager to multiple manager mode");
+	} else {
+		/* Unknown mode */
+	}
+
 	if (conf->running) {
 		/* Restart thread */
 		int retval;
-		MSG_DEBUG(msg_module, "Restarting Output manager thread");
+		MSG_DEBUG(msg_module, "Restarting Output Manager thread");
 		retval = pthread_create(&(conf->thread_id), NULL,
 				&output_manager_plugin_thread, (void *) conf);
 		if (retval != 0) {

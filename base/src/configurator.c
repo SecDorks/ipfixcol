@@ -39,13 +39,14 @@
 
 #include <ipfixcol.h>
 #include <ipfixcol/profiles.h>
-
 #include "configurator.h"
 #include "config.h"
 #include "queues.h"
 #include "preprocessor.h"
 #include "intermediate_process.h"
 #include "output_manager.h"
+#include "utils/elements/collection.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -336,8 +337,8 @@ int config_add_input(configurator *config, struct plugin_config *plugin, int ind
 				config->proc_id, plugin->conf.name, plugin->conf.file);
 		goto err;
 	} else if (*plugin_api_version != IPFIXCOL_API_VERSION_NUMBER) { /* wrong api version */
-		MSG_ERROR(msg_module, "[%d] Unable to load plugin '%s' with version %ui; at least version %ui is required...",
-				config->proc_id, plugin->conf.name, plugin->conf.file, *plugin_api_version, IPFIXCOL_API_VERSION_NUMBER);
+		MSG_ERROR(msg_module, "[%d] Unable to load plugin '%s' with version %u; at least version %u is required...",
+				config->proc_id, plugin->conf.name, *plugin_api_version, IPFIXCOL_API_VERSION_NUMBER);
 		goto err;
 	}
 
@@ -425,8 +426,8 @@ int config_add_inter(configurator *config, struct plugin_config *plugin, int ind
 				config->proc_id, plugin->conf.name, plugin->conf.file);
 		goto err;
 	} else if (*plugin_api_version != IPFIXCOL_API_VERSION_NUMBER) { /* wrong api version */
-		MSG_ERROR(msg_module, "[%d] Unable to load plugin '%s' with version %ui; at least version %ui is required...",
-				config->proc_id, plugin->conf.name, plugin->conf.file, *plugin_api_version, IPFIXCOL_API_VERSION_NUMBER);
+		MSG_ERROR(msg_module, "[%d] Unable to load plugin '%s' with version %u; at least version %u is required...",
+				config->proc_id, plugin->conf.name, *plugin_api_version, IPFIXCOL_API_VERSION_NUMBER);
 		goto err;
 	}
 
@@ -543,8 +544,8 @@ int config_add_storage(configurator *config, struct plugin_config *plugin, int i
 				config->proc_id, plugin->conf.name, plugin->conf.file);
 		goto err;
 	} else if (*plugin_api_version != IPFIXCOL_API_VERSION_NUMBER) { /* wrong api version */
-		MSG_ERROR(msg_module, "[%d] Unable to load plugin '%s' with version %ui; at least version %ui is required...",
-				config->proc_id, plugin->conf.name, plugin->conf.file, *plugin_api_version, IPFIXCOL_API_VERSION_NUMBER);
+		MSG_ERROR(msg_module, "[%d] Unable to load plugin '%s' with version %u; at least version %u is required...",
+				config->proc_id, plugin->conf.name, *plugin_api_version, IPFIXCOL_API_VERSION_NUMBER);
 		goto err;
 	}
 
@@ -1206,7 +1207,14 @@ void config_process_profiles(configurator *config)
  * \brief Reload IPFIXcol startup configuration
  */
 int config_reconf(configurator *config)
-{	
+{
+	// Load a description of IPFIX elements
+	int ret = elem_coll_reload(ipfix_elements);
+	if (!elem_coll_get()) {
+		// Failed to load a description of elements
+		return 1;
+	}
+
 	/* Create startup configuration from updated xml file */
 	config->new_doc = config_open_xml(config->startup_file);
 	if (!config->new_doc) {
@@ -1222,7 +1230,7 @@ int config_reconf(configurator *config)
 	config->profiles_file = config_get_new_profiles_file(config);
 
 	/* Process changes */
-	int ret = config_process_new_startup(config, new_startup);
+	ret = config_process_new_startup(config, new_startup);
 
 	/* Process profiles configuration */
 	config_process_profiles(config);
@@ -1293,6 +1301,9 @@ void config_destroy(configurator *config)
 	if (config->profiles_file) {
 		free(config->profiles_file);
 	}
+
+	/* Delete the description of IPFIX elements */
+	elem_coll_destroy();
 
 	/* Free configurator */
 	free(config);

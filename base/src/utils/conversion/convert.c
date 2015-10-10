@@ -1,5 +1,5 @@
 /**
- * \file udp/convert.c
+ * \file utils/conversion/convert.c
  * \author Michal Kozubik <kozubik.michal@gmail.com>
  * \brief Packet conversion from Netflow v5/v9 or sFlow to IPFIX format.
  *
@@ -772,7 +772,7 @@ int convert_packet(char **packet, ssize_t *len, uint16_t max_len, char *input_in
 			}
 #else
 			/* Conversion error */
-			return -1;
+			return CONVERSION_ERROR;
 #endif
 			break; }
 
