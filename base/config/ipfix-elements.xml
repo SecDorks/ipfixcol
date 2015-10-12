@@ -550,8 +550,8 @@
 		<enterprise>0</enterprise>
 		<id>99</id>
 		<name>multicastReplicationFactor</name>
-		<dataType></dataType>
-		<semantic></semantic>
+		<dataType>unsigned32</dataType>
+		<semantic>identifier</semantic>
 	</element>
 	<element>
 		<enterprise>0</enterprise>
