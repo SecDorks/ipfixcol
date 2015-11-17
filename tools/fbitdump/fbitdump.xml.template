@@ -623,7 +623,27 @@
         </value>
     </column>
 
+    <!-- RS -->
+    <column>
+        <name>HTTP Host</name>
+        <alias>%rshttph</alias>
+        <width>32</width>
+        <default-value>-</default-value>
+        <value type="plain">
+            <element>e44913id20</element>
+        </value>
+    </column>
+    <column>
+        <name>HTTP Path</name>
+        <alias>%rshttpp</alias>
+        <width>32</width>
+        <default-value>-</default-value>
+        <value type="plain">
+            <element>e44913id21</element>
+        </value>
+    </column>
 
+    <!-- Fields with operators -->
     <column>
         <name>Duration</name>
         <alias>%td</alias>
