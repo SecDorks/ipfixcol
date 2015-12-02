@@ -70,43 +70,47 @@
 #define TARGET_FIELD_PEN        44913
 
 /* IPFIX Information Elements used within this plugin (PEN, ID, name) */
-#define inveaHttpHost   { 39499,   1, "inveaHttpHost" }
-#define inveaHttpUrl    { 39499,   2, "inveaHttpUrl" }
+#define inveaHttpHost           { 39499,   1 }
+#define inveaHttpUrl            { 39499,   2 }
+#define inveaHttpUserAgent      { 39499,  20 }
 
-#define masarykHttpHost { 16982, 501, "masarykHttpHost" }
-#define masarykHttpUrl  { 16982, 502, "masarykHttpUrl" }
+#define masarykHttpHost         { 16982, 501 }
+#define masarykHttpUrl          { 16982, 502 }
+#define masarykHttpUserAgent    { 16982, 504 }
 
-#define ntopHttpHost    { 35632, 187, "ntopHttpHost" }
-#define ntopHttpUrl     { 35632, 180, "ntopHttpUrl" }
+#define ntopHttpHost            { 35632, 187 }
+#define ntopHttpUrl             { 35632, 180 }
+#define ntopHttpUserAgent       { 35632, 183 }
 
-#define ntopHttpHostv9  { NFV9_CONVERSION_PEN, 24891, "ntopHttpHost" }  /* Original ID: 57659 */
-#define ntopHttpUrlv9   { NFV9_CONVERSION_PEN, 24884, "ntopHttpUrl" }   /* Original ID: 57652 */
+#define ntopHttpHostv9          { NFV9_CONVERSION_PEN, 24891 } /* Original ID: 57659 */
+#define ntopHttpUrlv9           { NFV9_CONVERSION_PEN, 24884 } /* Original ID: 57652 */
+#define ntopHttpUserAgentv9     { NFV9_CONVERSION_PEN, 24887 } /* Original ID: 57655 */
 
-#define rsHttpHost      { 44913,  20, "rsHttpHost" }
-#define rsHttpUrl       { 44913,  21, "rsHttpUrl" }
+#define rsHttpHost              { 44913,  20 }
+#define rsHttpUrl               { 44913,  21 }
+#define rsHttpUserAgent         { 44913,  22 }
 
 struct ipfix_entity {
     uint32_t pen;
     uint16_t element_id;
-    char *entity_name;
 };
 
 static struct ipfix_entity invea_fields[] = {
-    inveaHttpHost, inveaHttpUrl
+    inveaHttpHost, inveaHttpUrl, inveaHttpUserAgent
 };
 static struct ipfix_entity masaryk_fields[] = {
-    masarykHttpHost, masarykHttpUrl
+    masarykHttpHost, masarykHttpUrl, masarykHttpUserAgent
 };
 static struct ipfix_entity ntop_fields[] = {
-    ntopHttpHost, ntopHttpUrl
+    ntopHttpHost, ntopHttpUrl, ntopHttpUserAgent
 };
 static struct ipfix_entity ntopv9_fields[] = {
-    ntopHttpHostv9, ntopHttpUrlv9
+    ntopHttpHostv9, ntopHttpUrlv9, ntopHttpUserAgentv9
 };
 static struct ipfix_entity rs_fields[] = {
-    rsHttpHost, rsHttpUrl
+    rsHttpHost, rsHttpUrl, rsHttpUserAgent
 };
-#define vendor_fields_count         2
+#define vendor_fields_count         3
 
 struct field_mapping {
     struct ipfix_entity from;
@@ -114,20 +118,24 @@ struct field_mapping {
 };
 
 static struct field_mapping invea_field_mappings[] = {
-    { inveaHttpHost,    rsHttpHost },
-    { inveaHttpUrl,     rsHttpUrl }
+    { inveaHttpHost,        rsHttpHost },
+    { inveaHttpUrl,         rsHttpUrl },
+    { inveaHttpUserAgent,   rsHttpUserAgent }
 };
 static struct field_mapping masaryk_field_mappings[] = {
-    { masarykHttpHost,  rsHttpHost },
-    { masarykHttpUrl,   rsHttpUrl }
+    { masarykHttpHost,      rsHttpHost },
+    { masarykHttpUrl,       rsHttpUrl },
+    { masarykHttpUserAgent, rsHttpUserAgent }
 };
 static struct field_mapping ntop_field_mappings[] = {
-    { ntopHttpHost,     rsHttpHost },
-    { ntopHttpUrl,      rsHttpUrl }
+    { ntopHttpHost,         rsHttpHost },
+    { ntopHttpUrl,          rsHttpUrl },
+    { ntopHttpUserAgent,    ntopHttpUserAgent }
 };
 static struct field_mapping ntopv9_field_mappings[] = {
-    { ntopHttpHostv9,   rsHttpHost },
-    { ntopHttpUrlv9,    rsHttpUrl }
+    { ntopHttpHostv9,       rsHttpHost },
+    { ntopHttpUrlv9,        rsHttpUrl },
+    { ntopHttpUserAgentv9,  rsHttpUserAgent }
 };
 
 struct templ_stats_elem_t {
