@@ -9,6 +9,7 @@
  *
  *     - HTTP hostname
  *     - HTTP URL
+ *     - HTTP User Agent
  *
  * Specifically, this plugin performs only a single task:
  *

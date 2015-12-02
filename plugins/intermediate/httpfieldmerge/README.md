@@ -16,6 +16,7 @@ set of fields. The following fields are currently supported:
 
  - HTTP hostname
  - HTTP URL
+ - HTTP User Agent
 
  Specifically, this plugin performs only a single task:
 
