@@ -2470,4 +2470,11 @@
         <dataType>string</dataType>
         <semantic></semantic>
     </element>
+    <element>
+        <enterprise>44913</enterprise>
+        <id>22</id>
+        <name>HTTPRequestUserAgent</name>
+        <dataType>string</dataType>
+        <semantic></semantic>
+    </element>
 </ipfix-elements>
