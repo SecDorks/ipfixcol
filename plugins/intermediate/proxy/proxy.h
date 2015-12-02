@@ -79,7 +79,6 @@ struct ipfix_ie {
     uint32_t pen;
     uint16_t element_id;
     uint16_t length;
-    char *entity_name;
 };
 
 struct templ_stats_elem_t {

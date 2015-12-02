@@ -381,13 +381,13 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         }
 
         switch (templ_stats->http_fields_pen) {
-            case 35632:     MSG_NOTICE(msg_module, "Detected HTTP IEs from ntop in template (template ID: %u)", template_id);
+            case 35632:     MSG_INFO(msg_module, "Detected HTTP IEs from ntop in template (template ID: %u)", template_id);
                             break;
 
-            case 39499:     MSG_NOTICE(msg_module, "Detected HTTP IEs from INVEA-TECH in template (template ID: %u)", template_id);
+            case 39499:     MSG_INFO(msg_module, "Detected HTTP IEs from INVEA-TECH in template (template ID: %u)", template_id);
                             break;
 
-            case 44913:     MSG_NOTICE(msg_module, "Detected HTTP IEs from RS in template (template ID: %u)", template_id);
+            case 44913:     MSG_INFO(msg_module, "Detected HTTP IEs from RS in template (template ID: %u)", template_id);
                             break;
 
             default:        break;
@@ -526,7 +526,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
     proc->key->tid = template_id_new;
     new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
     if (new_templ) {
-        MSG_NOTICE(msg_module, "Added new template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
+        MSG_INFO(msg_module, "Added new template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
     } else {
         MSG_ERROR(msg_module, "Failed to add template to template manager");
     }
@@ -896,7 +896,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 
     node = xmlDocGetRootElement(doc);
     if (node == NULL) {
-        MSG_NOTICE(msg_module, "Empty plugin configuration detected; falling back to default settings");
+        MSG_INFO(msg_module, "Empty plugin configuration detected; falling back to default settings");
         conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
         conf->proxy_ports = default_proxy_ports;
     } else {
@@ -996,7 +996,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 
         /* Fall back to default settings if when no proxy ports have been specified in plugin configuration */
         if (conf->proxy_port_count == 0) {
-            MSG_NOTICE(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
+            MSG_INFO(msg_module, "No proxy ports specified in plugin configuration; falling back to default settings");
             conf->proxy_port_count = sizeof(default_proxy_ports) / sizeof(int);
             conf->proxy_ports = default_proxy_ports;
         } else {
@@ -1050,7 +1050,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
         }
     }
 
-    MSG_NOTICE(msg_module, "Proxy port(s): %s", proxy_port_str);
+    MSG_INFO(msg_module, "Proxy port(s): %s", proxy_port_str);
 
     /* Print name servers in case they have been specified explicitly */
     if (conf->name_servers) {
@@ -1074,12 +1074,12 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
             ns = ns->next;
         }
 
-        MSG_NOTICE(msg_module, "Name server(s): %s", ns_str);
+        MSG_INFO(msg_module, "Name server(s): %s", ns_str);
     }
 
     /* Initialize statistics thread */
     if (conf->stat_interval > 0) {
-        MSG_NOTICE(msg_module, "Statistics thread execution interval: %u sec.", conf->stat_interval);
+        MSG_INFO(msg_module, "Statistics thread execution interval: %u sec.", conf->stat_interval);
 
         if (pthread_create(&(conf->stat_thread), NULL, &stat_thread, (void *) conf) != 0) {
             MSG_ERROR(msg_module, "Unable to create statistics thread");
@@ -1087,7 +1087,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
             return -1;
         }
     } else {
-        MSG_NOTICE(msg_module, "Statistics thread disabled");
+        MSG_INFO(msg_module, "Statistics thread disabled");
     }
 
     /* Initialize c-ares */
@@ -1146,7 +1146,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 
     *config = conf;
 
-    MSG_NOTICE(msg_module, "Plugin initialization completed successfully");
+    MSG_INFO(msg_module, "Plugin initialization completed successfully");
 
     /* Plugin successfully initialized */
     return 0;

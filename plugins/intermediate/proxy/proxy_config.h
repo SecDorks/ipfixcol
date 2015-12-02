@@ -74,29 +74,29 @@
 #define VAR_LEN_ELEM_LEN        65535
 
 /* IPFIX Information Elements used within this plugin (PEN, ID, length (bytes), name) */
-#define sourceTransportPort             { 0,       7,  2,  "sourceTransportPort" }
-#define sourceIPv4Address               { 0,       8,  4,  "sourceIPv4Address" }
-#define destinationTransportPort        { 0,      11,  2,  "destinationTransportPort" }
-#define destinationIPv4Address          { 0,      12,  4,  "destinationIPv4Address" }
-#define sourceIPv6Address               { 0,      27, 16,  "sourceIPv6Address" }
-#define destinationIPv6Address          { 0,      28, 16,  "destinationIPv6Address"}
+#define sourceTransportPort             { 0,       7,  2 }
+#define sourceIPv4Address               { 0,       8,  4 }
+#define destinationTransportPort        { 0,      11,  2 }
+#define destinationIPv4Address          { 0,      12,  4 }
+#define sourceIPv6Address               { 0,      27, 16 }
+#define destinationIPv6Address          { 0,      28, 16 }
 
-#define origSourceTransportPort         { 44913,  10,  2,  "origSourceTransportPort" }
-#define origSourceIPv4Address           { 44913,  11,  4,  "origSourceIPv4Address" }
-#define origDestinationTransportPort    { 44913,  12,  2,  "origDestinationTransportPort" }
-#define origDestinationIPv4Address      { 44913,  13,  4,  "origDestinationIPv4Address" }
-#define origSourceIPv6Address           { 44913,  14, 16,  "origSourceIPv6Address" }
-#define origDestinationIPv6Address      { 44913,  15, 16,  "origDestinationIPv6Address" }
+#define origSourceTransportPort         { 44913,  10,  2 }
+#define origSourceIPv4Address           { 44913,  11,  4 }
+#define origDestinationTransportPort    { 44913,  12,  2 }
+#define origDestinationIPv4Address      { 44913,  13,  4 }
+#define origSourceIPv6Address           { 44913,  14, 16 }
+#define origDestinationIPv6Address      { 44913,  15, 16 }
 
 /* Zero-length fields are fields with variable lengths */
-#define inveaHttpHost                   { 39499,   1,  0,  "inveaHttpHost" }
-#define inveaHttpUrl                    { 39499,   2,  0,  "inveaHttpUrl" }
+#define inveaHttpHost                   { 39499,   1,  0 }
+#define inveaHttpUrl                    { 39499,   2,  0 }
 
-#define ntopHttpHost                    { 35632, 187,  0,  "ntopHttpHost" }
-#define ntopHttpUrl                     { 35632, 180,  0,  "ntopHttpUrl" }
+#define ntopHttpHost                    { 35632, 187,  0 }
+#define ntopHttpUrl                     { 35632, 180,  0 }
 
-#define rsHttpHost                      { 44913,  20,  0,  "rsHttpHost" }
-#define rsHttpUrl                       { 44913,  21,  0,  "rsHttpUrl" }
+#define rsHttpHost                      { 44913,  20,  0 }
+#define rsHttpUrl                       { 44913,  21,  0 }
 
 struct ipfix_ie port_number_fields[] = {
     sourceTransportPort, destinationTransportPort
