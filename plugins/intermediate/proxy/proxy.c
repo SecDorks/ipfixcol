@@ -526,7 +526,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
     proc->key->tid = template_id_new;
     new_templ = tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key);
     if (new_templ) {
-        MSG_INFO(msg_module, "Added new template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
+        MSG_INFO(msg_module, "[%u] Added new template to template manager (template ID: %u)", proc->key->odid, proc->key->tid);
     } else {
         MSG_ERROR(msg_module, "Failed to add template to template manager");
     }
@@ -1191,8 +1191,8 @@ int intermediate_process_message(void *config, void *message)
      * in case it is not an IPFIX message (v10).
      */
     if (msg->pkt_header->version != htons(IPFIX_VERSION)) {
-        MSG_WARNING(msg_module,
-                "Unexpected IPFIX version detected (%X); skipping IPFIX message...", msg->pkt_header->version);
+        MSG_WARNING(msg_module, "[%u] Unexpected IPFIX version detected (%X); skipping IPFIX message...",
+                msg->input_info->odid, msg->pkt_header->version);
         pass_message(conf->ip_config, msg);
         return 0;
     }
@@ -1204,8 +1204,8 @@ int intermediate_process_message(void *config, void *message)
      */
     uint16_t old_msg_length = ntohs(msg->pkt_header->length);
     if (old_msg_length >= MSG_MAX_LENGTH) {
-        MSG_WARNING(msg_module,
-                "Length of received IPFIX message is invalid (%X); skipping IPFIX message...", msg->pkt_header->length);
+        MSG_WARNING(msg_module, "[%u] Length of received IPFIX message is invalid (%X); skipping IPFIX message...",
+                msg->input_info->odid, msg->pkt_header->length);
         pass_message(conf->ip_config, msg);
         return 0;
     }
@@ -1245,7 +1245,7 @@ int intermediate_process_message(void *config, void *message)
     proc.plugin_conf = config;
 
     /* Process template sets */
-    MSG_DEBUG(msg_module, "Processing template sets...");
+    MSG_DEBUG(msg_module, "[%u] Processing template sets...", msg->input_info->odid);
     proc.type = TM_TEMPLATE;
     for (i = 0; i < MSG_MAX_TEMPL_SETS && msg->templ_set[i]; ++i) {
         prev_offset = proc.offset;
@@ -1277,7 +1277,7 @@ int intermediate_process_message(void *config, void *message)
     new_msg->templ_set[tsets] = NULL;
 
     /* Process option template sets */
-    MSG_DEBUG(msg_module, "Processing option template sets...");
+    MSG_DEBUG(msg_module, "[%u] Processing option template sets...", msg->input_info->odid);
     proc.type = TM_OPTIONS_TEMPLATE;
     for (i = 0; i < MSG_MAX_OTEMPL_SETS && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
@@ -1303,7 +1303,7 @@ int intermediate_process_message(void *config, void *message)
     new_msg->opt_templ_set[otsets] = NULL;
 
     /* Process data sets */
-    MSG_DEBUG(msg_module, "Processing data sets...");
+    MSG_DEBUG(msg_module, "[%u] Processing data sets...", msg->input_info->odid);
     for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
         templ = msg->data_couple[i].data_template;
 
@@ -1312,7 +1312,7 @@ int intermediate_process_message(void *config, void *message)
          * be caused by a problem in a previous intermediate plugin.
          */
         if (!templ) {
-            MSG_WARNING(msg_module, "Data couple features no template (set: %u)", i);
+            MSG_WARNING(msg_module, "[%u] Data couple features no template (set: %u)", msg->input_info->odid, i);
             continue;
         }
 
@@ -1367,7 +1367,7 @@ int intermediate_process_message(void *config, void *message)
 
     /* Don't send empty IPFIX messages (i.e., message includes no templates, option templates, or data records) */
     if (proc.offset == IPFIX_HEADER_LENGTH) {
-        MSG_WARNING(msg_module, "Empty IPFIX message detected; dropping message");
+        MSG_WARNING(msg_module, "[%u] Empty IPFIX message detected; dropping message", msg->input_info->odid);
         free(proc.key);
         free(proc.msg);
         free(new_msg);
@@ -1393,7 +1393,7 @@ int intermediate_process_message(void *config, void *message)
     drop_message(conf->ip_config, message);
     pass_message(conf->ip_config, (void *) new_msg);
 
-    MSG_DEBUG(msg_module, "Processing IPFIX message done");
+    MSG_DEBUG(msg_module, "[%u] Processing IPFIX message done", msg->input_info->odid);
     return 0;
 }
 

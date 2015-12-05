@@ -213,7 +213,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from INVEA-TECH */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = invea_fields[i].pen;
             }
         }
@@ -221,7 +221,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from ntop */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
             }
         }
@@ -232,7 +232,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
          */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntopv9_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = NFV9_CONVERSION_PEN;
             }
         }
@@ -240,7 +240,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from Masaryk University */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, masaryk_fields[i].pen, masaryk_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "Detected enterprise-specific IEs (HTTP) from Masaryk University in template (template ID: %u)", template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from Masaryk University in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = masaryk_fields[i].pen;
             }
         }
@@ -248,7 +248,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from RS */
         for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = rs_fields[i].pen;
             }
         }
@@ -407,11 +407,11 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
 
     if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
         if (tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
-            MSG_ERROR(msg_module, "Failed to add template to template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
+            MSG_ERROR(msg_module, "[%u] Failed to add template to template manager (template ID: %u)", proc->key->odid, proc->key->tid);
         }
     } else {
         if (tm_update_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
-            MSG_ERROR(msg_module, "Failed to update template in template manager (ODID: %u, template ID: %u)", proc->key->odid, proc->key->tid);
+            MSG_ERROR(msg_module, "[%u] Failed to update template in template manager (template ID: %u)", proc->key->odid, proc->key->tid);
         }
     }
 
@@ -526,7 +526,7 @@ int intermediate_process_message(void *config, void *message)
     msg = (struct ipfix_message *) message;
     info = (struct input_info_network *) msg->input_info;
 
-    MSG_DEBUG(msg_module, "Received IPFIX message...");
+    MSG_DEBUG(msg_module, "[%u] Received IPFIX message...", msg->input_info->odid);
 
     /* Check whether source was closed */
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
@@ -541,8 +541,8 @@ int intermediate_process_message(void *config, void *message)
      * in case it is not an IPFIX message (v10).
      */
     if (msg->pkt_header->version != htons(IPFIX_VERSION)) {
-        MSG_WARNING(msg_module,
-                "Unexpected IPFIX version detected (%X); skipping IPFIX message...", msg->pkt_header->version);
+        MSG_WARNING(msg_module, "[%u] Unexpected IPFIX version detected (%X); skipping IPFIX message...",
+                msg->input_info->odid, msg->pkt_header->version);
         pass_message(conf->ip_config, msg);
         return 0;
     }
@@ -554,8 +554,8 @@ int intermediate_process_message(void *config, void *message)
      */
     uint16_t old_msg_length = ntohs(msg->pkt_header->length);
     if (old_msg_length >= MSG_MAX_LENGTH) {
-        MSG_WARNING(msg_module,
-                "Length of received IPFIX message is invalid (%X); skipping IPFIX message...", msg->pkt_header->length);
+        MSG_WARNING(msg_module, "[%u] Length of received IPFIX message is invalid (%X); skipping IPFIX message...",
+                msg->input_info->odid, msg->pkt_header->length);
         pass_message(conf->ip_config, msg);
         return 0;
     }
@@ -588,7 +588,7 @@ int intermediate_process_message(void *config, void *message)
     proc.plugin_conf = config;
 
     /* Process template sets */
-    MSG_DEBUG(msg_module, "Processing template sets...");
+    MSG_DEBUG(msg_module, "[%u] Processing template sets...", msg->input_info->odid);
     proc.type = TM_TEMPLATE;
     for (i = 0; i < MSG_MAX_TEMPL_SETS && msg->templ_set[i]; ++i) {
         prev_offset = proc.offset;
@@ -646,7 +646,7 @@ int intermediate_process_message(void *config, void *message)
     new_msg->opt_templ_set[otsets] = NULL;
 
     /* Process data sets */
-    MSG_DEBUG(msg_module, "Processing data sets...");
+    MSG_DEBUG(msg_module, "[%u] Processing data sets...", msg->input_info->odid);
     for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
         templ = msg->data_couple[i].data_template;
 
@@ -655,7 +655,7 @@ int intermediate_process_message(void *config, void *message)
          * be caused by a problem in a previous intermediate plugin.
          */
         if (!templ) {
-            MSG_WARNING(msg_module, "Data couple features no template (set: %u)", i);
+            MSG_WARNING(msg_module, "[%u] Data couple features no template (set: %u)", msg->input_info->odid, i);
             continue;
         }
 
@@ -698,7 +698,7 @@ int intermediate_process_message(void *config, void *message)
 
     /* Don't send empty IPFIX messages (i.e., message includes no templates, option templates, or data records) */
     if (proc.offset == IPFIX_HEADER_LENGTH) {
-        MSG_WARNING(msg_module, "Empty IPFIX message detected; dropping message");
+        MSG_WARNING(msg_module, "[%u] Empty IPFIX message detected; dropping message", msg->input_info->odid);
         free(proc.key);
         free(proc.msg);
         free(new_msg);
@@ -724,7 +724,7 @@ int intermediate_process_message(void *config, void *message)
     drop_message(conf->ip_config, message);
     pass_message(conf->ip_config, (void *) new_msg);
 
-    MSG_DEBUG(msg_module, "Processing IPFIX message done");
+    MSG_DEBUG(msg_module, "[%u] Processing IPFIX message done", msg->input_info->odid);
     return 0;
 }
 
