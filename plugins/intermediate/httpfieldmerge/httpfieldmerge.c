@@ -724,7 +724,7 @@ int intermediate_process_message(void *config, void *message)
     drop_message(conf->ip_config, message);
     pass_message(conf->ip_config, (void *) new_msg);
 
-    MSG_DEBUG(msg_module, "[%u] Processing IPFIX message done", msg->input_info->odid);
+    MSG_DEBUG(msg_module, "[%u] Processing IPFIX message done", new_msg->input_info->odid);
     return 0;
 }
 
