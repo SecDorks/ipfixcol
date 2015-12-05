@@ -214,7 +214,7 @@ int input_init(char *params, void **config)
 
     node = xmlDocGetRootElement(doc);
     if (node == NULL) {
-        MSG_NOTICE(msg_module, "Empty plugin configuration detected; falling back to default settings");
+        MSG_INFO(msg_module, "Empty plugin configuration detected; falling back to default settings");
     } else {
         if (xmlStrcmp(node->name, (const xmlChar *) "ipfixgenerator") != 0) {
             MSG_ERROR(msg_module, "Bad plugin configuration detected (root node != 'proxy')");
@@ -295,7 +295,7 @@ int input_init(char *params, void **config)
     /* Initialize random number generator seed */
     srand(time(NULL));
 
-    MSG_NOTICE(msg_module, "Plugin initialization completed successfully");
+    MSG_INFO(msg_module, "Plugin initialization completed successfully");
     return 0;
 }
 
