@@ -46,23 +46,17 @@ extern "C" {
 IPFIXCOL_API_VERSION;
 }
 
+#include <cstring>
 #include <stdexcept>
-
 #include "pugixml.hpp"
 
 #include "json.h"
 #include "Storage.h"
 #include "Printer.h"
 #include "Sender.h"
+#include "Server.h"
 
 static const char *msg_module = "json_storage";
-
-struct json_conf {
-        bool metadata;
-        Storage *storage;
-        bool tcpFlags;  /**< tcpFlags format - true = formated, false = RAW */
-        bool timestamp; /**< timestamp format - true = formated, false = UNIX */
-};
 
 void process_startup_xml(struct json_conf *conf, char *params) 
 {
@@ -78,18 +72,23 @@ void process_startup_xml(struct json_conf *conf, char *params)
 	
 	/* Check metadata processing */
 	std::string meta = ie.node().child_value("metadata");
-	conf->metadata = (meta == "yes") || (meta == "true") || (meta == "1");
+	conf->metadata = (strcasecmp(meta.c_str(), "yes") == 0 || meta == "1" ||
+		strcasecmp(meta.c_str(), "true") == 0);
+
+	/* Format of TCP flags */
+	std::string tcpFlags = ie.node().child_value("tcpFlags");
+	conf->tcpFlags = (strcasecmp(tcpFlags.c_str(), "formated") == 0);
+
+	/* Format of timestamps */
+	std::string timestamp = ie.node().child_value("timestamp");
+	conf->timestamp = (strcasecmp(timestamp.c_str(), "formated") == 0);
+
+	/* Format of protocols */
+	std::string protocol = ie.node().child_value("protocol");
+	conf->protocol = (strcasecmp(protocol.c_str(), "raw") == 0);
 
 	/* Process all outputs */
-	std::string tcpFlags = ie.node().child_value("tcpFlags");
-        conf->tcpFlags = (tcpFlags == "formated") || (tcpFlags == "Formated") || (tcpFlags == "FORMATED");
-
-        /* Check time format */
-        std::string timestamp = ie.node().child_value("timestamp");
-        conf->timestamp = (timestamp == "formated") || (timestamp == "Formated") || (timestamp == "FORMATED");
-
-        /* Process all outputs */
-        pugi::xpath_node_set outputs = doc.select_nodes("/fileWriter/output");
+	pugi::xpath_node_set outputs = doc.select_nodes("/fileWriter/output");
 
 	for (auto& node: outputs) {
 		std::string type = node.node().child_value("type");
@@ -100,6 +99,8 @@ void process_startup_xml(struct json_conf *conf, char *params)
 			output = new Printer(node);
 		} else if (type == "send") {
 			output = new Sender(node);
+		} else if (type == "server") {
+			output = new Server(node);
 		} else {
 			throw std::invalid_argument("Unknown output type \"" + type + "\"");
 		}

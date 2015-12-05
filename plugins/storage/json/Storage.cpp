@@ -56,8 +56,6 @@ extern "C" {
 #include <iomanip>
 #include <map>
 
-#define quotation(function) 
-
 static const char *msg_module = "json_storage";
 
 #define READ_BYTE_ARR(_dst_, _src_, _len_) \
@@ -66,17 +64,6 @@ do {\
 		(_dst_)[i] = read8((_src_) + i); \
 	} \
 } while(0)
-
-#define QUOTED(_func_) record += std::string("\"") + std::string(_func_) + std::string("\"");
-//#define QUOTED(_func_) record += "\""; record += (_func_); record += "\"";
-//#define QUOTED(_func_) (_func_);
-
-struct json_conf {
-        bool metadata;
-        Storage *storage;
-        bool tcpFlags;  /**< tcpFlags format - true = formated, false = RAW */
-        bool timestamp; /**< timestamp format - true = formated, false = UNIX */
-};
 
 /**
  * \brief Constructor
@@ -147,10 +134,11 @@ void Storage::readString(uint16_t& length, uint8_t *data_record, uint16_t &offse
 	length = realLength(length, data_record, offset);
 	
 	/* Read string and replace white spaces by \notation (\n, \t, ...) */
-
 	unsigned long int index  = 0;
 	unsigned long int index2 = 0;
 	const char * pointer = (const char *)(data_record + offset);
+
+	stringWithEscseq[index2++] = '"';
 
 	for(index = 0; index != length; index++) {	
 
@@ -170,10 +158,9 @@ void Storage::readString(uint16_t& length, uint8_t *data_record, uint16_t &offse
 		
 	}
 
+	stringWithEscseq[index2++] = '"';
 	stringWithEscseq[index2] = '\0';
-
 	record.append((const char *) stringWithEscseq);
-
 }
 
 /**
@@ -181,6 +168,8 @@ void Storage::readString(uint16_t& length, uint8_t *data_record, uint16_t &offse
  */
 void Storage::readRawData(uint16_t &length, uint8_t* data_record, uint16_t &offset)
 {
+	record += '"';
+
 	/* Read raw value */
 	switch (length) {
 	case 1:
@@ -207,7 +196,8 @@ void Storage::readRawData(uint16_t &length, uint8_t* data_record, uint16_t &offs
 		record += "0x";
 	}
 
-	QUOTED(buffer.data());
+	record += buffer.data();
+	record += '"';
 }
 
 /**
@@ -225,14 +215,14 @@ std::string Storage::rawName(uint32_t en, uint16_t id) const
  */
 void Storage::storeDataRecord(struct metadata *mdata, struct json_conf * config)
 {
+	std::string tmp_name;
+
 	offset = 0;
 	record.clear();
-	record += "{\"@type\": \"ipfix.entry\", \"ipfix\": {";
+	record += "{\"@type\": \"ipfix.entry\", ";
 
 	struct ipfix_template *templ = mdata->record.templ;
 	uint8_t *data_record = (uint8_t*) mdata->record.record;
-
-	//printf("%d %d %d\n\n\n", config->tcpFlags, config->timestamp, config->metadata);
 
 	/* get all fields */
 	for (uint16_t count = 0, index = 0; count < templ->field_count; ++count, ++index) {
@@ -248,106 +238,89 @@ void Storage::storeDataRecord(struct metadata *mdata, struct json_conf * config)
 		
 		/* Get element informations */
 		const ipfix_element_t * element = get_element_by_id(id, enterprise);
-		if (element == NULL) { /* Skip unknown elements */
-			MSG_DEBUG(msg_module, "Unknown element (%s)", element->name);
-			continue;
+		if (element == NULL) {
+			// Element not found
+			tmp_name = rawName(enterprise, id);
+			MSG_DEBUG(msg_module, "Unknown element (%s)", tmp_name.c_str());
 		}
 
 		if (count > 0) {
 			record += ", ";
 		}
 
-		record += "\"";
-		record += element->name;
+		record += "\"ipfix.";
+		record += (element != NULL) ? element->name : tmp_name;
 		record += "\": ";
 
-		if(element->type == ET_UNSIGNED_8 || element->type == ET_UNSIGNED_16 || element->type == ET_UNSIGNED_32 || element->type == ET_UNSIGNED_64) {
-			if(length == BYTE1) {
-				if(element->semantic == ES_FLAGS) {
-					if(config->tcpFlags)
-						QUOTED(translator.formatFlags8(read8(data_record + offset)))
-					else
-						record += std::to_string((uint8_t) (read8(data_record + offset)));
-				} else if(!strcmp(element->name, "protocolIdentifier"))
-					QUOTED(translator.formatProtocol(read8(data_record + offset)))
-				else
-					record += std::to_string((uint8_t) (read8(data_record + offset)));
-			} else if(length == BYTE2) {
-				if(element->semantic == ES_FLAGS) {
-					if(config->tcpFlags)
-						QUOTED(translator.formatFlags16(read16(data_record + offset)))
-					else
-						record += std::to_string((uint16_t) ntohs(read16(data_record + offset)));
-				} else
-					record += std::to_string((uint16_t) ntohs(read16(data_record + offset)));
-			} else if(length == BYTE4)
-				record += std::to_string((uint32_t) ntohl(read32(data_record + offset)));
-			else	// 8 [B]
-				record += std::to_string((uint64_t) be64toh(read64(data_record + offset)));
-		} else if(element->type == ET_SIGNED_8 || element->type == ET_SIGNED_16 || element->type == ET_SIGNED_32 || element->type == ET_SIGNED_64) {
-			if(length == BYTE1) 
-				record += std::to_string((char) (read8(data_record + offset)));
-			else if(length == BYTE2)
-				record += std::to_string((int16_t) read8(data_record + offset));
-			else if(length == BYTE4)
-				record += std::to_string((int32_t) ntohl(read32(data_record + offset)));
-			else
-				record += std::to_string((int64_t) be64toh(read64(data_record + offset)));
-		} else if(element->type == ET_FLOAT_32 || element->type == ET_FLOAT_64) {
-			if(length == BYTE4)
-				record += std::to_string((float) ntohl(read32(data_record + offset)));
-			else
-				record += std::to_string((double) be64toh(read64(data_record + offset)));
-		} else {
-			switch (element->type) {
-			case ET_IPV4_ADDRESS:
-				QUOTED(translator.formatIPv4(read32(data_record + offset)))
-				break;
-			case ET_IPV6_ADDRESS:
-				READ_BYTE_ARR(addr6, data_record + offset, IPV6_LEN);
-				QUOTED(translator.formatIPv6(addr6))
-				break;
-			case ET_MAC_ADDRESS:
-				READ_BYTE_ARR(addrMac, data_record + offset, MAC_LEN);
-				QUOTED(translator.formatMac(addrMac))
-				break;
-			case ET_DATE_TIME_SECONDS:
-				if(config->timestamp)
-					QUOTED(translator.formatTimestamp(read64(data_record + offset), t_units::SEC))
-				else
-					record += std::to_string((int64_t) be64toh(read64(data_record + offset)));
-				break;
-			case ET_DATE_TIME_MILLISECONDS:
-				if(config->timestamp)
-					QUOTED(translator.formatTimestamp(read64(data_record + offset), t_units::MILLISEC))
-				else
-					record += std::to_string((int64_t) be64toh(read64(data_record + offset)));
-				break;
-			case ET_DATE_TIME_MICROSECONDS:
-				if(config->timestamp)
-					QUOTED(translator.formatTimestamp(read64(data_record + offset), t_units::MICROSEC))
-				else
-					record += std::to_string((int64_t) be64toh(read64(data_record + offset)));
-				break;
-			case ET_DATE_TIME_NANOSECONDS:
-				if(config->timestamp)
-					QUOTED(translator.formatTimestamp(read64(data_record + offset), t_units::NANOSEC))
-				else
-					record += std::to_string((int64_t) be64toh(read64(data_record + offset)));
-				break;
-			case ET_STRING:
-				readString(length, data_record, offset);
-				break;
-			case ET_BOOLEAN:
-				readRawData(length, data_record, offset);
-				break;
-			case ET_UNASSIGNED: 
-				readRawData(length, data_record, offset);
-				break;
-			default:
-				readRawData(length, data_record, offset);
-				break;
-			}
+		switch ((element != NULL) ? element->type : ET_UNASSIGNED) {
+		case ET_UNSIGNED_8:
+			record += translator.toUnsigned(&length, data_record, offset, element, config);
+			break;
+		case ET_UNSIGNED_16:
+			record += translator.toUnsigned(&length, data_record, offset, element, config);
+			break;
+		case ET_UNSIGNED_32:
+			record += translator.toUnsigned(&length, data_record, offset, element, config);
+			break;
+		case ET_UNSIGNED_64:
+			record += translator.toUnsigned(&length, data_record, offset, element, config);
+			break;
+		case ET_SIGNED_8:
+			record += translator.toSigned(&length, data_record, offset);
+			break;
+		case ET_SIGNED_16:
+			record += translator.toSigned(&length, data_record, offset);
+			break;
+		case ET_SIGNED_32:
+			record += translator.toSigned(&length, data_record, offset);
+			break;
+		case ET_SIGNED_64:
+			record += translator.toSigned(&length, data_record, offset);
+			break;
+		case ET_FLOAT_32:
+			record += translator.toFloat(&length, data_record, offset);
+			break;
+		case ET_FLOAT_64:
+			record += translator.toFloat(&length, data_record, offset);
+			break;
+		case ET_IPV4_ADDRESS:
+			record += '"';
+			record += translator.formatIPv4(read32(data_record + offset));
+			record += '"';
+			break;
+		case ET_IPV6_ADDRESS:
+			READ_BYTE_ARR(addr6, data_record + offset, IPV6_LEN);
+			record += '"';
+			record += translator.formatIPv6(addr6);
+			record += '"';
+			break;
+		case ET_MAC_ADDRESS:
+			READ_BYTE_ARR(addrMac, data_record + offset, MAC_LEN);
+			break;
+		case ET_DATE_TIME_SECONDS:
+			record += translator.formatTimestamp(read64(data_record + offset), t_units::SEC, config);
+			break;
+		case ET_DATE_TIME_MILLISECONDS:
+			record += translator.formatTimestamp(read64(data_record + offset), t_units::MILLISEC, config);
+			break;
+		case ET_DATE_TIME_MICROSECONDS:
+			translator.formatTimestamp(read64(data_record + offset), t_units::MICROSEC, config);
+			break;
+		case ET_DATE_TIME_NANOSECONDS:
+			translator.formatTimestamp(read64(data_record + offset), t_units::NANOSEC, config);
+			break;
+		case ET_STRING:
+			readString(length, data_record, offset);
+			break;
+		case ET_BOOLEAN:
+			readRawData(length, data_record, offset);
+			break;
+		case ET_UNASSIGNED: 
+			readRawData(length, data_record, offset);
+			break;
+		default:
+			readRawData(length, data_record, offset);
+			break;
 		}
 
 		offset += length;
@@ -355,11 +328,11 @@ void Storage::storeDataRecord(struct metadata *mdata, struct json_conf * config)
 	
 	/* Store metadata */
 	if (processMetadata) {
-		record += "}, \"metadata\": {";
+			record += "}, \"metadata\": {";
 		storeMetadata(mdata);
 	}
 	
-	record += "}}\n";
+	record += "}\n";
 	sendData();
 }
 
@@ -385,7 +358,8 @@ void Storage::storeMetadata(metadata* mdata)
 	record += "\"profiles\": [";
 	if (mdata->channels) {
 		// Get name of root profile
-		void *profile_ptr, *prev_profile_ptr;
+		void *profile_ptr = NULL;
+		void *prev_profile_ptr = NULL;
 		const char *root_profile_name;
 
 		profile_ptr = channel_get_profile(mdata->channels[0]);

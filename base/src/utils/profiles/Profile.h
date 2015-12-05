@@ -43,6 +43,7 @@
 #include <string>
 #include <vector>
 
+#include <ipfixcol/profiles.h>
 #include "profiles_internal.h"
 
 class Channel;
@@ -51,16 +52,18 @@ class Channel;
  * \brief Class representing profile
  */
 class Profile {
+public:
 	/* Shortcuts */
 	using channelsVec = std::vector<Channel *>;
 	using profilesVec = std::vector<Profile *>;
-public:
+
 	/**
 	 * \brief Constructor
 	 *
 	 * \param[in] name profile name
+	 * \param[in] type profile type
 	 */
-	Profile(std::string name);
+	Profile(std::string name, enum PROFILE_TYPE type);
 	
 	/**
 	 * \brief Destructor
@@ -138,6 +141,27 @@ public:
 	void setParent(Profile *parent) { m_parent = parent; }
 
 	/**
+	 * \brief Get profile's directory
+	 *
+	 * \return Directory
+	 */
+	std::string getDirectory() { return m_directory; }
+
+	/**
+	 * \brief Set profile's directory
+	 *
+	 * \param[in] dir Directory
+	 */
+	void setDirectory(std::string dir) { m_directory = dir; }
+
+	/**
+	 * \brief Get profile's type
+	 *
+	 * \return Type of the profile
+	 */
+	enum PROFILE_TYPE getType() { return m_type; }
+
+	/**
 	 * \brief Update path name from ancestors
 	 */
 	void updatePathName();
@@ -166,6 +190,10 @@ private:
 	profile_id_t m_id{};		/**< Profile ID */
 	std::string m_pathName{};	/**< rootName/../parentName/myName */
 	std::string m_name{};		/**< Profile name */
+
+	enum PROFILE_TYPE m_type;	/**< Profily type */
+	std::string m_directory{};	/**< Directory of profile */
+
 	profilesVec m_children{};	/**< Children */
 	channelsVec m_channels{};	/**< Channels */
 	
