@@ -55,6 +55,7 @@ IPFIXCOL_API_VERSION;
 #include "Printer.h"
 #include "Sender.h"
 #include "Server.h"
+#include "File.h"
 
 static const char *msg_module = "json_storage";
 
@@ -87,6 +88,14 @@ void process_startup_xml(struct json_conf *conf, char *params)
 	std::string protocol = ie.node().child_value("protocol");
 	conf->protocol = (strcasecmp(protocol.c_str(), "raw") == 0);
 
+	/* Ignore unknown elements */
+	std::string unknown = ie.node().child_value("ignoreUnknown");
+	conf->ignoreUnknown = true;
+	if (strcasecmp(unknown.c_str(), "false") == 0 || unknown == "0" ||
+			strcasecmp(unknown.c_str(), "no") == 0) {
+		conf->ignoreUnknown = false;
+	}
+
 	/* Process all outputs */
 	pugi::xpath_node_set outputs = doc.select_nodes("/fileWriter/output");
 
@@ -101,6 +110,8 @@ void process_startup_xml(struct json_conf *conf, char *params)
 			output = new Sender(node);
 		} else if (type == "server") {
 			output = new Server(node);
+		} else if (type == "file") {
+			output = new File(node);
 		} else {
 			throw std::invalid_argument("Unknown output type \"" + type + "\"");
 		}

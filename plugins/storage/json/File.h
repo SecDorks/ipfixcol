@@ -1,7 +1,7 @@
 /**
- * \file json.h
- * \author Michal Kozubik <kozubik@cesnet.cz>
- * \brief Header for JSON storage plugin
+ * \file File.h
+ * \author Lukas Hutak <xhutak01@stud.fit.vutbr.cz>
+ * \brief File output (header file)
  *
  * Copyright (C) 2015 CESNET, z.s.p.o.
  *
@@ -37,41 +37,64 @@
  *
  */
 
+#ifndef FILE_H
+#define FILE_H
 
-#ifndef JSON_H
-#define JSON_H
-
-extern "C" {
-#include <ipfixcol/verbose.h>
-}
+#include "json.h"
 
 #include <string>
-#include "pugixml/pugixml.hpp"
+#include <ctime>
+#include <cstdio>
 
-// Class prototype
-class Storage;
+#include <pthread.h>
 
 /**
- * \brief JSON plugin configuration
+ * \brief The class for file output interface
  */
-struct json_conf {
-        bool metadata;
-        Storage *storage;
-        bool tcpFlags;  /**< tcpFlags format  - true = formated, false = RAW  */
-        bool timestamp; /**< timestamp format - true = formated, false = UNIX */
-        bool protocol;  /**< protocol format  - true = RAW, false = formated  */
-        bool ignoreUnknown; /**< Ignore unknown elements */
-};
-
-class Output
-{
+class File : public Output {
 public:
-	Output() {}
-	Output(const pugi::xpath_node& config);
-	virtual ~Output() {}
+	// Constructor & destructor
+	File(const pugi::xpath_node &config);
+	~File();
 
-	virtual void ProcessDataRecord(const std::string& record) = 0;
+	// Store a record to the file
+	void ProcessDataRecord(const std::string &record);
+
+	// Get a directory path for a time window
+	static int dir_name(const time_t &tm, const std::string &tmplt,
+		std::string &dir);
+	// Create a directory for a time window
+	static int dir_create(const std::string &path);
+	// Create a file for a time window
+	static FILE *file_create(const std::string &tmplt, const std::string &prefix,
+				const time_t &tm);
+private:
+	/** Minimal window size */
+	const unsigned int _WINDOW_MIN_SIZE = 60; // seconds
+
+	/** Configuration of a thread */
+	typedef struct thread_ctx_s {
+		pthread_t thread;            /**< Thread                     */
+		pthread_mutex_t mutex;       /**< Data mutex                 */
+		bool stop;                   /**< Stop flag for temination   */
+
+		unsigned int window_size;    /**< Size of a time window      */
+		time_t window_time;          /**< Current time window        */
+		std::string storage_path;    /**< Storage path (template)    */
+		std::string file_prefix;     /**< File prefix                */
+
+		FILE *new_file;              /**< New file                   */
+		bool new_file_ready;         /**< New file flag              */
+	} thread_ctx_t;
+
+	/** File descritor */
+	FILE *_file;
+	/** Thread for changing time windows */
+	thread_ctx_t *_thread;
+
+	// Window changer
+	static void *thread_window(void *context);
 };
 
-#endif // JSON_H
+#endif // FILE_H
 
