@@ -1367,7 +1367,7 @@ int intermediate_process_message(void *config, void *message)
 
     /* Don't send empty IPFIX messages (i.e., message includes no templates, option templates, or data records) */
     if (proc.offset == IPFIX_HEADER_LENGTH) {
-        MSG_WARNING(msg_module, "[%u] Empty IPFIX message detected; dropping message", msg->input_info->odid);
+        MSG_DEBUG(msg_module, "[%u] Empty IPFIX message detected; dropping message", msg->input_info->odid);
         free(proc.key);
         free(proc.msg);
         free(new_msg);
@@ -1392,8 +1392,6 @@ int intermediate_process_message(void *config, void *message)
 
     drop_message(conf->ip_config, message);
     pass_message(conf->ip_config, (void *) new_msg);
-
-    MSG_DEBUG(msg_module, "[%u] Processing IPFIX message done", msg->input_info->odid);
     return 0;
 }
 
