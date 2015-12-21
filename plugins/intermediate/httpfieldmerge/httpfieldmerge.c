@@ -82,20 +82,20 @@ static struct ipfix_entity* pen_to_enterprise_fields(uint32_t pen)
 {
     struct ipfix_entity *fields = NULL;
     switch (pen) {
-        case 16982:     fields = (struct ipfix_entity *) masaryk_fields;
-                        break;
+        case MASARYK_PEN:   fields = (struct ipfix_entity *) masaryk_fields;
+                            break;
 
-        case 35632:     fields = (struct ipfix_entity *) ntop_fields;
-                        break;
+        case NTOP_PEN:      fields = (struct ipfix_entity *) ntop_fields;
+                            break;
 
-        case 39499:     fields = (struct ipfix_entity *) invea_fields;
-                        break;
+        case INVEA_PEN:     fields = (struct ipfix_entity *) invea_fields;
+                            break;
 
-        case 44913:     fields = (struct ipfix_entity *) rs_fields;
-                        break;
+        case RS_PEN:        fields = (struct ipfix_entity *) rs_fields;
+                            break;
 
-        default:        MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
-                        break;
+        default:            MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
+                            break;
     }
 
     return fields;
@@ -111,17 +111,20 @@ static struct field_mapping* pen_to_field_mappings(uint32_t pen)
 {
     struct field_mapping *mapping = NULL;
     switch (pen) {
-        case 16982:     mapping = (struct field_mapping *) masaryk_field_mappings;
-                        break;
+        case MASARYK_PEN:   mapping = (struct field_mapping *) masaryk_field_mappings;
+                            break;
 
-        case 35632:     mapping = (struct field_mapping *) ntop_field_mappings;
-                        break;
+        case NTOP_PEN:      mapping = (struct field_mapping *) ntop_field_mappings;
+                            break;
 
-        case 39499:     mapping = (struct field_mapping *) invea_field_mappings;
-                        break;
+        case INVEA_PEN:     mapping = (struct field_mapping *) invea_field_mappings;
+                            break;
 
-        default:        MSG_WARNING(msg_module, "Could not retrieve field mappings for enterprise-specific IEs; unknown PEN (%u)", pen);
-                        break;
+        case RS_PEN:        mapping = (struct field_mapping *) rs_field_mappings;
+                            break;
+
+        default:            MSG_WARNING(msg_module, "Could not retrieve field mappings for enterprise-specific IEs; unknown PEN (%u)", pen);
+                            break;
     }
 
     return mapping;
@@ -298,7 +301,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
      * Skip further processing if template does not include HTTP IEs (hostname, URL),
      * or if template already uses the unified set of HTTP IEs.
      */
-    if (templ_stats->http_fields_pen == 0 || templ_stats->http_fields_pen == TARGET_FIELD_PEN) {
+    if (templ_stats->http_fields_pen == 0 || templ_stats->http_fields_pen == TARGET_PEN) {
         /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
@@ -432,7 +435,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
         }
 
         templ_stats_new->id = template_id;
-        templ_stats_new->http_fields_pen = TARGET_FIELD_PEN;
+        templ_stats_new->http_fields_pen = TARGET_PEN;
         templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
         HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats_new);
     }
