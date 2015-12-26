@@ -9,7 +9,7 @@
  *
  *     - HTTP hostname
  *     - HTTP URL
- *     - HTTP User Agent
+ *     - HTTP user agent (UA)
  *
  * Specifically, this plugin performs only a single task:
  *
@@ -19,6 +19,7 @@
  *
  * HTTP-related fields from the following vendors are currently supported:
  *
+ *     - Cisco,                 PEN: 9
  *     - Masaryk University,    PEN: 16982
  *     - INVEA-TECH,            PEN: 39499
  *     - ntop,                  PEN: 35632
@@ -298,8 +299,9 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
     }
 
     /*
-     * Skip further processing if template does not include HTTP IEs (hostname, URL),
-     * or if template already uses the unified set of HTTP IEs.
+     * Skip further processing in any of the following situations:
+     *      - Template does not include HTTP IEs (hostname, URL)
+     *      - Template already uses the unified set of HTTP IEs
      */
     if (templ_stats->http_fields_pen == 0 || templ_stats->http_fields_pen == TARGET_PEN) {
         /* Copy existing record to new message */
@@ -456,6 +458,7 @@ void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, voi
     (void) templ;
 
     /* Check whether we will exceed the allocated memory boundary */
+    // FIXME Use realloc here?
     if (proc->offset + rec_len > proc->allocated_msg_length) {
         MSG_ERROR(msg_module, "Not enough memory allocated for processing full message (allocated: %u, current offset: %u)",
                 proc->allocated_msg_length, proc->offset);
@@ -505,7 +508,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 }
 
 /**
- *  \brief Initialize intermediate Plugin
+ *  \brief Initialize intermediate plugin
  *
  * \param[in] params configuration xml for the plugin
  * \param[in] ip_config configuration structure of corresponding intermediate process
