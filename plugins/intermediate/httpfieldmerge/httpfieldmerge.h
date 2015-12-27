@@ -89,7 +89,7 @@
 #define ciscoHttpUrl            { CISCO_PEN, 12235 }
 #define ciscoHttpUserAgent      { CISCO_PEN, 12235 }
 #define ciscoHttpUnknown        { CISCO_PEN, 12235 }
-#define cisco_field_count       1
+#define cisco_field_count       4
 
 #define inveaHttpHost           { INVEA_PEN,  1 }
 #define inveaHttpUrl            { INVEA_PEN,  2 }
@@ -125,6 +125,9 @@ struct ipfix_entity {
     uint16_t element_id;
 };
 
+static struct ipfix_entity cisco_fields[] = {
+    ciscoHttpHost, ciscoHttpUrl, ciscoHttpUserAgent, ciscoHttpUnknown
+};
 static struct ipfix_entity invea_fields[] = {
     inveaHttpHost, inveaHttpUrl, inveaHttpUserAgent
 };

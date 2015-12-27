@@ -65,6 +65,7 @@
 #include <string.h>
 
 #include "httpfieldmerge.h"
+#include "vendor_proc/processors.h"
 
 /* API version constant */
 IPFIXCOL_API_VERSION;
@@ -214,8 +215,16 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 
     /* Determine exporter PEN based on presence of certain enterprise-specific IEs */
     if (templ_stats->http_fields_pen_determined == 0) { /* Do only if it was not done (successfully) before */
+        /* Check enterprise-specific IEs from Cisco */
+        for (i = 0; i < cisco_field_count && templ_stats->http_fields_pen == 0; ++i) {
+            if (template_record_get_field(record, cisco_fields[i].pen, cisco_fields[i].element_id, NULL) != NULL) {
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from Cisco in template (template ID: %u)", proc->odid, template_id);
+                templ_stats->http_fields_pen = cisco_fields[i].pen;
+            }
+        }
+
         /* Check enterprise-specific IEs from INVEA-TECH */
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+        for (i = 0; i < invea_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
                 MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = invea_fields[i].pen;
@@ -223,7 +232,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         }
 
         /* Check enterprise-specific IEs from ntop */
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+        for (i = 0; i < ntop_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
                 MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
@@ -234,7 +243,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
          * https://github.com/CESNET/ipfixcol/issues/16
          * http://www.ietf.org/mail-archive/web/ipfix/current/msg07287.html
          */
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+        for (i = 0; i < ntop_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntopv9_fields[i].element_id, NULL) != NULL) {
                 MSG_INFO(msg_module, "[%u] Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = NFV9_CONVERSION_PEN;
@@ -242,7 +251,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         }
 
         /* Check enterprise-specific IEs from Masaryk University */
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+        for (i = 0; i < masaryk_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, masaryk_fields[i].pen, masaryk_fields[i].element_id, NULL) != NULL) {
                 MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from Masaryk University in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = masaryk_fields[i].pen;
@@ -250,7 +259,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         }
 
         /* Check enterprise-specific IEs from RS */
-        for (i = 0; i < vendor_fields_count && templ_stats->http_fields_pen == 0; ++i) {
+        for (i = 0; i < rs_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
                 MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", proc->odid, template_id);
                 templ_stats->http_fields_pen = rs_fields[i].pen;
@@ -450,6 +459,7 @@ void templates_processor(uint8_t *rec, int rec_len, void *data)
  *
  * \param[in] rec Pointer to data record
  * \param[in] rec_len Data record length
+ * \param[in] templ IPFIX template corresponding to the data record
  * \param[in] data Any-type data structure (here: proxy_processor)
  */
 void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
@@ -472,7 +482,7 @@ void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, voi
 }
 
 /**
- *  \brief Initialize intermediate Plugin
+ *  \brief Initialize intermediate plugin
  *
  * \param[in] params configuration xml for the plugin
  * \param[in] ip_config configuration structure of corresponding intermediate process
@@ -508,7 +518,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 }
 
 /**
- *  \brief Initialize intermediate plugin
+ *  \brief Initialize intermediate Plugin
  *
  * \param[in] params configuration xml for the plugin
  * \param[in] ip_config configuration structure of corresponding intermediate process
