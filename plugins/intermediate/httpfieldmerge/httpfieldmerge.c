@@ -60,127 +60,21 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
 
 #include "httpfieldmerge.h"
+#include "fields.h"
 #include "vendor_proc/processors.h"
+
+#include "vendor_proc/cisco.h"
+#include "vendor_proc/other.h"
 
 /* API version constant */
 IPFIXCOL_API_VERSION;
 
-/* Identifier for MSG_* macros */
-static char *msg_module = "httpfieldmerge";
-
 /**
- * \brief Retrieves a reference to a set of enterprise-specific fields,
- * based on a supplied PEN.
- *
- * \param[in] pen IANA Private Enterprise Number
- * \return Field reference if supplied PEN is known, NULL otherwise
- */
-static struct ipfix_entity* pen_to_enterprise_fields(uint32_t pen)
-{
-    struct ipfix_entity *fields = NULL;
-    switch (pen) {
-        case MASARYK_PEN:   fields = (struct ipfix_entity *) masaryk_fields;
-                            break;
-
-        case NTOP_PEN:      fields = (struct ipfix_entity *) ntop_fields;
-                            break;
-
-        case INVEA_PEN:     fields = (struct ipfix_entity *) invea_fields;
-                            break;
-
-        case RS_PEN:        fields = (struct ipfix_entity *) rs_fields;
-                            break;
-
-        default:            MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
-                            break;
-    }
-
-    return fields;
-}
-
-/**
- * \brief Retrieves a reference to field mappings, based on a supplied PEN.
- *
- * \param[in] pen IANA Private Enterprise Number
- * \return Field mappings reference if supplied PEN is known, NULL otherwise
- */
-static struct field_mapping* pen_to_field_mappings(uint32_t pen)
-{
-    struct field_mapping *mapping = NULL;
-    switch (pen) {
-        case MASARYK_PEN:   mapping = (struct field_mapping *) masaryk_field_mappings;
-                            break;
-
-        case NTOP_PEN:      mapping = (struct field_mapping *) ntop_field_mappings;
-                            break;
-
-        case INVEA_PEN:     mapping = (struct field_mapping *) invea_field_mappings;
-                            break;
-
-        case RS_PEN:        mapping = (struct field_mapping *) rs_field_mappings;
-                            break;
-
-        default:            MSG_WARNING(msg_module, "Could not retrieve field mappings for enterprise-specific IEs; unknown PEN (%u)", pen);
-                            break;
-    }
-
-    return mapping;
-}
-
-/**
- * \brief Retrieves a reference to field mappings, based on a field ID. This is
- * only for fields converted from NetFlow v9 that have an 'all-ones' enterprise ID.
- *
- * \param[in] id Field ID
- * \return Field mappings reference if ID could be found, NULL otherwise
- */
-static struct field_mapping* get_field_mappings_v9(uint16_t id)
-{
-    struct field_mapping *mapping = NULL;
-    uint8_t i;
-
-    for (i = 0; i < vendor_fields_count && mapping == NULL; ++i) {
-        if (ntopv9_field_mappings[i].from.pen == NFV9_CONVERSION_PEN && ntopv9_field_mappings[i].from.element_id == id) {
-            mapping = &ntopv9_field_mappings[i];
-        }
-    }
-
-    // if (mapping == NULL) {
-    //     MSG_WARNING(msg_module, "Could not retrieve (NetFlow v9) field mappings for enterprise-specific IEs; unknown field ID (%u)", id);
-    // }
-
-    return mapping;
-}
-
-/**
- * \brief Retrieves an IPFIX Information Element based on a supplied field
- * mapping and the mapping's source field. As such, the target of a mapping
- * is retrieved.
- *
- * \param[in] mapping Field mapping
- * \param[in] source_field Source field of the mapping, for which the target
- *      field must be retrieved
- * \return Field reference if the supplied source field is known within the
- *      supplied mapping, NULL otherwise
- */
-static struct ipfix_entity* field_to_mapping_target(struct field_mapping* mapping, struct ipfix_entity* source_field)
-{
-    uint8_t i;
-    for (i = 0; i < vendor_fields_count; ++i) {
-        if (mapping[i].from.element_id == source_field->element_id) {
-            return &mapping[i].to;
-        }
-    }
-
-    return NULL;
-}
-
- /**
  * \brief Determines whether template contains HTTP-related fields.
  *
  * \param[in] rec Pointer to template record
@@ -268,217 +162,6 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 
         templ_stats->http_fields_pen_determined = 1;
     }
-}
-
-/**
- * \brief Processing of template records and option template records
- *
- * \param[in] rec Pointer to template record
- * \param[in] rec_len Template record length
- * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
- */
-void templates_processor(uint8_t *rec, int rec_len, void *data)
-{
-    struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
-    struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
-    struct ipfix_template_record *new_rec;
-    uint8_t i;
-
-    /* Don't process options template records */
-    if (proc->type == TM_OPTIONS_TEMPLATE) {
-        /* Copy record to new message */
-        memcpy(proc->msg + proc->offset, old_rec, rec_len);
-        proc->offset += rec_len;
-        proc->length += rec_len;
-        return;
-    }
-
-    /* Get structure from hashmap that provides information about current template */
-    struct templ_stats_elem_t *templ_stats;
-    uint16_t template_id = ntohs(old_rec->template_id);
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
-    if (templ_stats == NULL) {
-        MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
-
-        /* Copy existing record to new message */
-        memcpy(proc->msg + proc->offset, old_rec, rec_len);
-        proc->offset += rec_len;
-        proc->length += rec_len;
-        return;
-    }
-
-    /*
-     * Skip further processing in any of the following situations:
-     *      - Template does not include HTTP IEs (hostname, URL)
-     *      - Template already uses the unified set of HTTP IEs
-     */
-    if (templ_stats->http_fields_pen == 0 || templ_stats->http_fields_pen == TARGET_PEN) {
-        /* Copy existing record to new message */
-        memcpy(proc->msg + proc->offset, old_rec, rec_len);
-        proc->offset += rec_len;
-        proc->length += rec_len;
-        return;
-    }
-
-    /* Replace enterprise-specific fields by vendors with 'unified' fields */
-    /* Copy original template record */
-    new_rec = calloc(1, rec_len);
-    if (!new_rec) {
-        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-        return;
-    }
-
-    memcpy(new_rec, old_rec, rec_len);
-
-    /* Find HTTP fields (if present) and replace them */
-    struct field_mapping *field_mappings;
-    struct ipfix_entity *target_field;
-    uint16_t count = 0, index = 0;
-    uint16_t field_id;
-
-    if (templ_stats->http_fields_pen == NFV9_CONVERSION_PEN) {
-        for (i = 0; i < vendor_fields_count; ++i) {
-            /* Iterate over all fields in template record */
-            while (count < ntohs(new_rec->count)
-                    && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
-                field_id = ntohs(new_rec->fields[index].ie.id);
-
-                /* Only continue if enterprise bit is set */
-                if (field_id & 0x8000) {
-                    /* Unset enterprise bit */
-                    field_id &= ~0x8000;
-
-                    /* Retrieve field mapping */
-                    field_mappings = get_field_mappings_v9(field_id);
-                    if (field_mappings) {
-                        /* Find mapping's target field */
-                        target_field = field_to_mapping_target(field_mappings, &field_mappings[i].from);
-
-                        /* Replace field ID */
-                        new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
-
-                        /* PEN comes just after the IE, before the next IE */
-                        ++index;
-
-                        /* Replace PEN */
-                        new_rec->fields[index].enterprise_number = htonl(target_field->pen);
-                    } else {
-                        /* No field mappings found, so no need to translate field ID */
-                        /* PEN comes just after the IE, before the next IE */
-                        ++index;
-                    }
-                }
-
-                ++count;
-                ++index;
-            }
-        }
-    } else {
-        struct ipfix_entity *http_fields = pen_to_enterprise_fields(templ_stats->http_fields_pen);
-        if ((field_mappings = pen_to_field_mappings(templ_stats->http_fields_pen))) {
-            /* Iterate over all fields in template record */
-            while (count < ntohs(new_rec->count)
-                    && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
-                field_id = ntohs(new_rec->fields[index].ie.id);
-
-                /* Only continue if enterprise bit is set */
-                if (field_id & 0x8000) {
-                    /* Unset enterprise bit */
-                    field_id &= ~0x8000;
-
-                    for (i = 0; i < vendor_fields_count; ++i) {
-                        /* Apply field mapping if enterprise-specific fields have been found */
-                        /* Note: we can safely use 'index + 1' in the statement below, since the first part
-                         * of the condition already indicates that we are dealing with an enterprise-specific IE
-                         */
-                        if (field_id == http_fields[i].element_id && ntohl(new_rec->fields[index + 1].enterprise_number) == http_fields[i].pen) {
-                            /* Find mapping's target field */
-                            target_field = field_to_mapping_target(field_mappings, &http_fields[i]);
-
-                            /* Replace field ID */
-                            new_rec->fields[index].ie.id = htons(target_field->element_id | 0x8000);
-
-                            /* PEN comes just after the IE, before the next IE */
-                            ++index;
-
-                            /* Replace PEN */
-                            new_rec->fields[index].enterprise_number = htonl(target_field->pen);
-
-                            /* No need to loop further since field has been found already */
-                            break;
-                        }
-                    }
-                }
-
-                ++count;
-                ++index;
-            }
-        }
-    }
-
-    /* Store it in template manager */
-    proc->key->tid = template_id;
-
-    if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
-        if (tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
-            MSG_ERROR(msg_module, "[%u] Failed to add template to template manager (template ID: %u)", proc->key->odid, proc->key->tid);
-        }
-    } else {
-        if (tm_update_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
-            MSG_ERROR(msg_module, "[%u] Failed to update template in template manager (template ID: %u)", proc->key->odid, proc->key->tid);
-        }
-    }
-
-    /* Add new record to message */
-    memcpy(proc->msg + proc->offset, new_rec, rec_len);
-    proc->offset += rec_len;
-    proc->length += rec_len;
-
-    /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
-    struct templ_stats_elem_t *templ_stats_new;
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats_new);
-    if (!templ_stats_new) {
-        templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
-        if (!templ_stats_new) {
-            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-            free(new_rec);
-            return;
-        }
-
-        templ_stats_new->id = template_id;
-        templ_stats_new->http_fields_pen = TARGET_PEN;
-        templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
-        HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats_new);
-    }
-
-    free(new_rec);
-}
-
-/**
- * \brief Processing of data records
- *
- * \param[in] rec Pointer to data record
- * \param[in] rec_len Data record length
- * \param[in] templ IPFIX template corresponding to the data record
- * \param[in] data Any-type data structure (here: proxy_processor)
- */
-void data_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
-{
-    struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
-    (void) templ;
-
-    /* Check whether we will exceed the allocated memory boundary */
-    // FIXME Use realloc here?
-    if (proc->offset + rec_len > proc->allocated_msg_length) {
-        MSG_ERROR(msg_module, "Not enough memory allocated for processing full message (allocated: %u, current offset: %u)",
-                proc->allocated_msg_length, proc->offset);
-        return;
-    }
-
-    /* Copy original data record */
-    memcpy(proc->msg + proc->offset, rec, rec_len);
-    proc->offset += rec_len;
-    proc->length += rec_len;
 }
 
 /**
@@ -620,9 +303,9 @@ int intermediate_process_message(void *config, void *message)
         proc.length = 4;
 
         /* Process all template set records */
-        template_set_process_records(msg->templ_set[i], proc.type, &templates_processor, (void *) &proc);
+        template_set_process_records(msg->templ_set[i], proc.type, &other_template_rec_processor, (void *) &proc);
 
-        /* Check whether a new template set was added by 'templates_processor' */
+        /* Check whether a new template set was added by 'other_template_rec_processor' */
         if (proc.offset == prev_offset + 4) { /* No new template set record was added */
             proc.offset = prev_offset;
         } else { /* New template set was added; add it to data structure as well */
@@ -646,9 +329,9 @@ int intermediate_process_message(void *config, void *message)
         proc.offset += 4;
         proc.length = 4;
 
-        template_set_process_records((struct ipfix_template_set *) msg->opt_templ_set[i], proc.type, &templates_processor, (void *) &proc);
+        template_set_process_records((struct ipfix_template_set *) msg->opt_templ_set[i], proc.type, &other_template_rec_processor, (void *) &proc);
 
-        /* Check whether a new options template set was added by 'templates_processor' */
+        /* Check whether a new options template set was added by 'other_template_rec_processor' */
         if (proc.offset == prev_offset + 4) {
             proc.offset = prev_offset;
         } else { /* New options template set was added; add it to data structure as well */
@@ -697,7 +380,7 @@ int intermediate_process_message(void *config, void *message)
         new_templ->last_transmission = templ->last_transmission;
         tm_template_reference_inc(new_templ);
 
-        data_set_process_records(msg->data_couple[i].data_set, templ, &data_processor, (void *) &proc);
+        data_set_process_records(msg->data_couple[i].data_set, templ, &other_data_rec_processor, (void *) &proc);
 
         new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
         new_msg->data_couple[new_i].data_set->header.flowset_id = htons(new_msg->data_couple[new_i].data_template->template_id);

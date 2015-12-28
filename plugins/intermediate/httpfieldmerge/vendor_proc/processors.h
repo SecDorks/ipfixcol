@@ -60,7 +60,12 @@
  *
  */
 
-#include "cisco.h"
+#ifndef HTTPFIELDMERGE_PROCESSORS_H_
+#define HTTPFIELDMERGE_PROCESSORS_H_
+
+#include <ipfixcol.h>
 
 tset_callback_f pen_to_template_set_processor(uint32_t pen);
 dset_callback_f pen_to_data_set_processor(uint32_t pen);
+
+#endif /* HTTPFIELDMERGE_PROCESSORS_H_ */

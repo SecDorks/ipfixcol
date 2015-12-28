@@ -1,5 +1,5 @@
 /*
- * \file httpfieldmerge.h
+ * \file fields.h
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'httpfieldmerge' intermediate plugin.
  *
@@ -60,18 +60,8 @@
  *
  */
 
-#ifndef HTTPFIELDMERGE_H_
-#define HTTPFIELDMERGE_H_
-
-#include <ipfixcol.h>
-
-#include "uthash.h"
-
-/* Identifier for MSG_* macros */
-#define msg_module "httpfieldmerge"
-
-#define NFV9_CONVERSION_PEN     0xFFFFFFFF
-#define TEMPL_MAX_LEN           100000
+#ifndef HTTPFIELDMERGE_FIELDS_H_
+#define HTTPFIELDMERGE_FIELDS_H_
 
 #define CISCO_PEN   9
 #define INVEA_PEN   39499
@@ -123,37 +113,28 @@
 #define targetHttpUrl           { TARGET_PEN, 21 }
 #define targetHttpUserAgent     { TARGET_PEN, 22 }
 
-struct templ_stats_elem_t {
-    int id;                         // Hash key
-    uint32_t http_fields_pen;       // Exporter PEN in case template contains HTTP-related fields
-    int http_fields_pen_determined; // Indicates whether the PEN belonging HTTP-related has been determined before
-    UT_hash_handle hh;              // Hash handle for internal hash functioning
+struct ipfix_entity {
+    uint32_t pen;
+    uint16_t element_id;
 };
 
-/* Stores plugin's internal configuration */
-struct httpfieldmerge_config {
-    char *params;
-    void *ip_config;
-    uint32_t ip_id;
-    struct ipfix_template_mgr *tm;
-
-    /*
-     * Hashmap for storing the IP version used in every template by template ID. We
-     * place this structure in proxy_config rather than proxy_processor, since
-     * it should be persistent between various IPFIX messages (and proxy processor
-     * is reset for every IPFIX message).
-     */
-    struct templ_stats_elem_t *templ_stats;
+static struct ipfix_entity cisco_fields[] = {
+    ciscoHttpHost, ciscoHttpUrl, ciscoHttpUserAgent, ciscoHttpUnknown
+};
+static struct ipfix_entity invea_fields[] = {
+    inveaHttpHost, inveaHttpUrl, inveaHttpUserAgent
+};
+static struct ipfix_entity masaryk_fields[] = {
+    masarykHttpHost, masarykHttpUrl, masarykHttpUserAgent
+};
+static struct ipfix_entity ntop_fields[] = {
+    ntopHttpHost, ntopHttpUrl, ntopHttpUserAgent
+};
+static struct ipfix_entity ntopv9_fields[] = {
+    ntopHttpHostv9, ntopHttpUrlv9, ntopHttpUserAgentv9
+};
+static struct ipfix_entity rs_fields[] = {
+    rsHttpHost, rsHttpUrl, rsHttpUserAgent
 };
 
-struct httpfieldmerge_processor {
-    uint8_t *msg;
-    uint16_t allocated_msg_length, offset;
-    uint32_t length, odid;
-    int type;
-    
-    struct httpfieldmerge_config *plugin_conf; // Pointer to proxy_config, such that we don't have to store some pointers twice
-    struct ipfix_template_key *key; // Stores the key of a newly added template within the template manager
-};
-
-#endif /* HTTPFIELDMERGE_H_ */
+#endif /* HTTPFIELDMERGE_FIELDS_H_ */

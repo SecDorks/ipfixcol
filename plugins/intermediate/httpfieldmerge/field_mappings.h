@@ -1,5 +1,5 @@
 /*
- * \file vendor_proc/prcessors.c
+ * \file field_mappings.h
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'httpfieldmerge' intermediate plugin.
  *
@@ -60,51 +60,40 @@
  *
  */
 
-#include "httpfieldmerge.h"
-#include "processors.h"
+#ifndef HTTPFIELDMERGE_FIELD_MAPPINGS_H_
+#define HTTPFIELDMERGE_FIELD_MAPPINGS_H_
 
-#include "cisco.h"
-#include "other.h"
+#include "fields.h"
 
-/**
- * \brief Retrieves a reference to a template set processor function based on a supplied
- * PEN.
- *
- * \param[in] pen IANA Private Enterprise Number
- * \return Reference to template set processor function if supplied PEN is known, NULL
- * otherwise
- */
-tset_callback_f pen_to_template_set_processor(uint32_t pen)
-{
-    tset_callback_f proc = NULL;
-    switch (pen) {
-        case CISCO_PEN:     proc = &cisco_template_rec_processor;
-                            break;
+struct field_mapping {
+    struct ipfix_entity from;
+    struct ipfix_entity to;
+};
 
-        default:            proc = &other_template_rec_processor;
-                            break;
-    }
+static struct field_mapping invea_field_mappings[] = {
+    { inveaHttpHost,        targetHttpHost },
+    { inveaHttpUrl,         targetHttpUrl },
+    { inveaHttpUserAgent,   targetHttpUserAgent }
+};
+static struct field_mapping masaryk_field_mappings[] = {
+    { masarykHttpHost,      targetHttpHost },
+    { masarykHttpUrl,       targetHttpUrl },
+    { masarykHttpUserAgent, targetHttpUserAgent }
+};
+static struct field_mapping ntop_field_mappings[] = {
+    { ntopHttpHost,         targetHttpHost },
+    { ntopHttpUrl,          targetHttpUrl },
+    { ntopHttpUserAgent,    targetHttpUserAgent }
+};
+static struct field_mapping ntopv9_field_mappings[] = {
+    { ntopHttpHostv9,       targetHttpHost },
+    { ntopHttpUrlv9,        targetHttpUrl },
+    { ntopHttpUserAgentv9,  targetHttpUserAgent }
+};
+static struct field_mapping rs_field_mappings[] = {
+    { rsHttpHost,           targetHttpHost },
+    { rsHttpUrl,            targetHttpUrl },
+    { rsHttpUserAgent,      targetHttpUserAgent }
+};
 
-    return proc;
-}
-
-/**
- * \brief Retrieves a reference to a data set processor function based on a supplied
- * PEN.
- *
- * \param[in] pen IANA Private Enterprise Number
- * \return Reference to field processor function if supplied PEN is known, NULL otherwise
- */
-dset_callback_f pen_to_data_set_processor(uint32_t pen)
-{
-    dset_callback_f proc = NULL;
-    switch (pen) {
-        case CISCO_PEN:     proc = &cisco_data_rec_processor;
-                            break;
-
-        default:            proc = &other_data_rec_processor;
-                            break;
-    }
-
-    return proc;
-}
+#endif /* HTTPFIELDMERGE_FIELD_MAPPINGS_H_ */

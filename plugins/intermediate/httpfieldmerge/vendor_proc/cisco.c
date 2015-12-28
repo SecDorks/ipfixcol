@@ -60,12 +60,34 @@
  *
  */
 
-void cisco_template_set_processor(uint8_t *rec, int rec_len, void *data)
-{
+#include "cisco.h"
 
+/**
+ * \brief Processing of template records and option template records
+ *
+ * \param[in] rec Pointer to template record
+ * \param[in] rec_len Template record length
+ * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
+ */
+void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
+{
+    (void) rec;
+    (void) rec_len;
+    (void) data;
 }
 
-void cisco_data_set_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
+/**
+ * \brief Processing of data records
+ *
+ * \param[in] rec Pointer to data record
+ * \param[in] rec_len Data record length
+ * \param[in] templ IPFIX template corresponding to the data record
+ * \param[in] data Any-type data structure (here: proxy_processor)
+ */
+void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
 {
-
+    (void) rec;
+    (void) rec_len;
+    (void) templ;
+    (void) data;
 }
