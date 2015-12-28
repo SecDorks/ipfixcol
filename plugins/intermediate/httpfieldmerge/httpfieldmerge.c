@@ -297,13 +297,51 @@ int intermediate_process_message(void *config, void *message)
          */
         template_set_process_records(msg->templ_set[i], proc.type, &templates_stat_processor, (void *) &proc);
 
-        /* Add template set header, and update offset and length */
-        memcpy(proc.msg + proc.offset, &(msg->templ_set[i]->header), 4);
-        proc.offset += 4;
-        proc.length = 4;
+        /* Get template ID. This ID is used for looking up vendor information in hashmap. Since
+         * all records in a set will be produced by a flow exporter from the same vendor, taking
+         * the first record's template ID should do.
+         */
+        uint16_t template_id = ntohs(msg->templ_set[i]->first_record.template_id);
 
-        /* Process all template set records */
-        template_set_process_records(msg->templ_set[i], proc.type, &other_template_rec_processor, (void *) &proc);
+        /* Get structure from hashmap that provides information about current template. As
+         * described above, this is only an approximation (since we deal here with template
+         * sets instead of records), which is why we define <templ_stats> (and <template_id>)
+         * in local scope.
+         */
+        struct templ_stats_elem_t *templ_stats;
+        HASH_FIND(hh, proc.plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+
+        /*
+         * Skip further processing in any of the following situations:
+         *      - Structure could not be found in hashmap
+         *      - Template does not include HTTP IEs (hostname, URL)
+         *      - Template already uses the unified set of HTTP IEs
+         */
+        if (templ_stats == NULL
+                || templ_stats->http_fields_pen == 0
+                || templ_stats->http_fields_pen == TARGET_PEN) {
+            if (templ_stats == NULL) {
+                MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
+            }
+
+            /* Copy full template set to new message */
+            memcpy(proc.msg + proc.offset, msg->templ_set[i], msg->templ_set[i]->header.length);
+            proc.offset += msg->templ_set[i]->header.length;
+            proc.length += msg->templ_set[i]->header.length;
+        } else {
+            /* Add template set header, and update offset and length */
+            memcpy(proc.msg + proc.offset, &(msg->templ_set[i]->header), sizeof(struct ipfix_set_header));
+            proc.offset += 4;
+            proc.length = 4;
+
+            /* Process template set records; select processor based on PEN */
+            template_set_process_records(msg->templ_set[i], proc.type, pen_to_template_set_processor(templ_stats->http_fields_pen), (void *) &proc);
+            // if (templ_stats->http_fields_pen == CISCO_PEN) {
+            //     template_set_process_records(msg->templ_set[i], proc.type, &cisco_template_rec_processor, (void *) &proc);
+            // } else {
+            //     template_set_process_records(msg->templ_set[i], proc.type, &other_template_rec_processor, (void *) &proc);
+            // }
+        }
 
         /* Check whether a new template set was added by 'other_template_rec_processor' */
         if (proc.offset == prev_offset + 4) { /* No new template set record was added */

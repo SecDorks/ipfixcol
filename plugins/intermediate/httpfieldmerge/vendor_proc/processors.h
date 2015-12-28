@@ -63,6 +63,8 @@
 #ifndef HTTPFIELDMERGE_PROCESSORS_H_
 #define HTTPFIELDMERGE_PROCESSORS_H_
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <ipfixcol.h>
 
 tset_callback_f pen_to_template_set_processor(uint32_t pen);

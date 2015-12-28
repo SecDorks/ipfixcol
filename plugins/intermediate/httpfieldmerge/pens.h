@@ -1,5 +1,5 @@
 /*
- * \file field_mappings.h
+ * \file pens.h
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'httpfieldmerge' intermediate plugin.
  *
@@ -60,40 +60,14 @@
  *
  */
 
-#ifndef HTTPFIELDMERGE_FIELD_MAPPINGS_H_
-#define HTTPFIELDMERGE_FIELD_MAPPINGS_H_
+#ifndef HTTPFIELDMERGE_PENS_H_
+#define HTTPFIELDMERGE_PENS_H_
 
-#include "fields.h"
+#define CISCO_PEN   9
+#define INVEA_PEN   39499
+#define MASARYK_PEN 16982
+#define NTOP_PEN    35632
+#define RS_PEN      44913
+#define TARGET_PEN  RS_PEN
 
-struct field_mapping {
-    struct ipfix_entity from;
-    struct ipfix_entity to;
-};
-
-static struct field_mapping invea_field_mappings[] = {
-    { inveaHttpHostname,    targetHttpHostname },
-    { inveaHttpUrl,         targetHttpUrl },
-    { inveaHttpUserAgent,   targetHttpUserAgent }
-};
-static struct field_mapping masaryk_field_mappings[] = {
-    { masarykHttpHostname,  targetHttpHostname },
-    { masarykHttpUrl,       targetHttpUrl },
-    { masarykHttpUserAgent, targetHttpUserAgent }
-};
-static struct field_mapping ntop_field_mappings[] = {
-    { ntopHttpHostname,     targetHttpHostname },
-    { ntopHttpUrl,          targetHttpUrl },
-    { ntopHttpUserAgent,    targetHttpUserAgent }
-};
-static struct field_mapping ntopv9_field_mappings[] = {
-    { ntopHttpHostnamev9,   targetHttpHostname },
-    { ntopHttpUrlv9,        targetHttpUrl },
-    { ntopHttpUserAgentv9,  targetHttpUserAgent }
-};
-static struct field_mapping rs_field_mappings[] = {
-    { rsHttpHostname,       targetHttpHostname },
-    { rsHttpUrl,            targetHttpUrl },
-    { rsHttpUserAgent,      targetHttpUserAgent }
-};
-
-#endif /* HTTPFIELDMERGE_FIELD_MAPPINGS_H_ */
+#endif /* HTTPFIELDMERGE_PENS_H_ */
