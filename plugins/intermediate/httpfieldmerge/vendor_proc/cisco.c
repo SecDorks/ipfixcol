@@ -65,17 +65,121 @@
 #include "fields.h"
 
 /**
+ * \brief Get offset of next field instance in data record. For variable-length
+ * fields, the returned offset does not include the field's length indicators (i.e.,
+ * the first byte, or the first three bytes, of the field).
+ *
+ * \param[in] data_record Data record
+ * \param[in] template Data record's template
+ * \param[in] enterprise Enterprise number
+ * \param[in] id Field ID
+ * \param[in] from_offset Offset to start at (default: -1)
+ * \param[out] data_length Field length
+ * \return Field offset
+ */
+int data_record_field_next_offset(uint8_t *data_record, struct ipfix_template *template,
+        uint32_t enterprise, uint16_t id, int from_offset, int *data_length)
+{
+    uint16_t ie_id;
+    uint32_t enterprise_id;
+    int count, offset = 0, index, length, prev_offset;
+    struct ipfix_template_row *row = NULL;
+
+    if (!(template->data_length & 0x80000000)) {
+        /* Data record with no variable length field */
+        row = template_get_field(template, enterprise, id, &offset);
+        if (!row) {
+            return -1;
+        }
+
+        if (data_length) {
+            *data_length = row->length;
+        }
+
+        return offset;
+    }
+
+    /* Data record with variable length field(s) */
+    for (count = index = 0; count < template->field_count; count++, index++) {
+        ie_id = template->fields[index].ie.id;
+        length = template->fields[index].ie.length;
+        enterprise_id = 0;
+
+        if (ie_id >> 15) {
+            /* Enterprise Number */
+            ie_id &= 0x7FFF;
+            enterprise_id = template->fields[++index].enterprise_number;
+        }
+
+        prev_offset = offset;
+
+        switch (length) {
+            case (1):
+            case (2):
+            case (4):
+            case (8):
+                offset += length;
+                break;
+            default:
+                if (length == VAR_IE_LENGTH) {
+                    length = *((uint8_t *) (data_record + offset));
+                    offset += 1;
+
+                    if (length == 255) {
+                        length = ntohs(*((uint16_t *) (data_record + offset)));
+                        offset += 2;
+                    }
+
+                    prev_offset = offset;
+                    offset += length;
+                } else {
+                    offset += length;
+                }
+
+                break;
+        }
+
+        /* Field found */
+        if (id == ie_id && enterprise == enterprise_id && prev_offset > from_offset) {
+            if (data_length) {
+                *data_length = length;
+            }
+
+            return prev_offset;
+        }
+    }
+
+    /* Field not found */
+    return -1;
+}
+
+/**
+ * \brief Get offset of field in data record
+ *
+ * \param[in] data_record Data record
+ * \param[in] template Data record's template
+ * \param[in] enterprise Enterprise number
+ * \param[in] id Field ID
+ * \param[out] data_length Field length
+ * \return Field offset
+ */
+int data_record_field_offset(uint8_t *data_record, struct ipfix_template *template, uint32_t enterprise, uint16_t id, int *data_length)
+{
+    return data_record_field_next_offset(data_record, template, enterprise, id, -1, data_length);
+}
+
+/**
  * \brief Count the number of occurrences of the specified field
  * \param[in] rec Template record
  * \param[in] enterprise Field enterprise ID
  * \param[in] id Field ID
  * \return Number of field occurrences
  */
-int template_record_count_field_occurences(struct ipfix_template_record *rec, uint32_t enterprise, uint16_t id)
+int template_record_count_field_occurences(struct ipfix_template_record *rec,
+        uint32_t enterprise, uint16_t id)
 {
     int field_count = 0;
     uint16_t total_field_count = ntohs(rec->count);
-
     struct ipfix_template_row *row = (struct ipfix_template_row *) rec->fields;
 
     int i;
@@ -90,12 +194,8 @@ int template_record_count_field_occurences(struct ipfix_template_record *rec, ui
             ren = ntohl(*((uint32_t *) row));
         }
 
-        /* Check informations */
+        /* Check field contents */
         if (rid == id && ren == enterprise) {
-            if (ren != 0) {
-                --row;
-            }
-
             ++field_count;
         }
     }
@@ -164,9 +264,8 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
 
     /* Count number of field occurences */
     int http_field_count = template_record_count_field_occurences(new_rec, CISCO_PEN, 12235);
-    MSG_DEBUG(msg_module, " > Detected %d Cisco HTTP fields", http_field_count);
     if (http_field_count != 4) {
-        MSG_WARNING(msg_module, "Template record features unexpected number of enterprise specific fields (expected: %d, actual: %d)", http_field_count);
+        MSG_WARNING(msg_module, "Template record features unexpected number of instances of field e%uid12235 (expected: %d, actual: %d)", CISCO_PEN, 4, http_field_count);
 
         /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, new_rec, rec_len);
@@ -175,24 +274,24 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
         return;
     }
 
-    uint8_t http_field_instance = 1;
+    uint8_t http_instance = 1;
     uint16_t count = 0, index = 0;
-    uint16_t field_id;
+    uint16_t id;
     while (count < ntohs(new_rec->count)
             && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len
-            && http_field_instance <= http_field_count) {
-        field_id = ntohs(new_rec->fields[index].ie.id);
+            && http_instance <= http_field_count) {
+        id = ntohs(new_rec->fields[index].ie.id);
 
         /* Only continue if enterprise bit is set */
-        if (field_id & 0x8000) {
+        if (id & 0x8000) {
             /* Unset enterprise bit */
-            field_id &= ~0x8000;
+            id &= ~0x8000;
 
             /* Apply field mapping if enterprise-specific fields have been found */
             /* Note: we can safely use 'index + 1' in the statement below, since the first part
              * of the condition already indicates that we are dealing with an enterprise-specific IE
              */
-            if (field_id == 12235 && ntohl(new_rec->fields[index + 1].enterprise_number) == CISCO_PEN) {
+            if (id == 12235 && ntohl(new_rec->fields[index + 1].enterprise_number) == CISCO_PEN) {
                 /* Determine target field */
                 /* Cisco uses multiple instances (4) of field e9id12235 for exporting
                    HTTP-related information, always in the following order:
@@ -201,44 +300,31 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
                         - Instance 3: user agent string
                         - Instance 4: unknown?
                  */
-                struct ipfix_entity target_field;
-                switch (http_field_instance) {
-                    case 1:     target_field = target_http_url;
+                uint32_t id;
+                switch (http_instance) {
+                    case 1:     id = ((struct ipfix_entity) target_http_url).element_id;
                                 break;
 
-                    case 2:     target_field = target_http_hostname;
+                    case 2:     id = ((struct ipfix_entity) target_http_hostname).element_id;
                                 break;
 
-                    case 3:     target_field = target_http_user_agent;
+                    case 3:     id = ((struct ipfix_entity) target_http_user_agent).element_id;
                                 break;
 
-                    default:    target_field = target_unknown;
+                    default:    id = ((struct ipfix_entity) target_unknown).element_id;
                                 break;
                 }
 
-                if (target_field.pen == target_unknown.pen && target_field.element_id == target_unknown.element_id) {
-                    /* Remove field from template record (8 = IE size, including PEN) */
-                    memmove(&(new_rec->fields[index].ie), &(new_rec->fields[index].ie) + 8, rec_len - ((uint8_t *) &(new_rec->fields[index].ie) - rec));
+                /* Replace field ID */
+                new_rec->fields[index].ie.id = htons(id | 0x8000);
 
-                    /* Housekeeping to make sure that loop continues correctly */
-                    rec_len -= 8;
-                    --count;
-                    --index;
+                /* PEN comes just after the IE, before the next IE */
+                ++index;
 
-                    /* Template record features one field less */
-                    new_rec->count = htons(ntohs(new_rec->count) - 1);
-                } else {
-                    /* Replace field ID */
-                    new_rec->fields[index].ie.id = htons(target_field.element_id | 0x8000);
+                /* Replace PEN */
+                new_rec->fields[index].enterprise_number = htonl(TARGET_PEN);
 
-                    /* PEN comes just after the IE, before the next IE */
-                    ++index;
-
-                    /* Replace PEN */
-                    new_rec->fields[index].enterprise_number = htonl(target_field.pen);
-                }
-
-                ++http_field_instance;
+                ++http_instance;
             }
         }
 
@@ -290,12 +376,66 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
  * \param[in] rec Pointer to data record
  * \param[in] rec_len Data record length
  * \param[in] templ IPFIX template corresponding to the data record
- * \param[in] data Any-type data structure (here: proxy_processor)
+ * \param[in] data Any-type data structure
  */
 void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
 {
-    (void) rec;
-    (void) rec_len;
-    (void) templ;
-    (void) data;
+    struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
+
+    /* Check whether we will exceed the allocated memory boundary */
+    if (proc->offset + rec_len > proc->allocated_msg_len) {
+        proc->allocated_msg_len = proc->allocated_msg_len + 100;
+        proc->msg = realloc(proc->msg, proc->allocated_msg_len);
+        if (!proc->msg) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            return;
+        }
+    }
+
+    /* Strip first six bytes from Cisco HTTP fields, as they are used for some Cisco-proprietary
+     * encoding and not part of the actual exported HTTP-related string
+     */
+    int field_len, field_offset;
+    uint8_t i;
+    uint16_t new_field_len;
+    for (i = 0; i < target_field_count; ++i) {
+        field_offset = data_record_field_offset(rec, templ, target_fields[i].pen, target_fields[i].element_id, &field_len);
+
+        /* Remove first six bytes from fields */
+        memmove(rec + field_offset, rec + field_offset + 6, rec_len - field_offset - 6);
+
+        /* Update field length */
+        new_field_len = field_len - 6;
+
+        /* Update field length in IPFIX message */
+        if (new_field_len >= 255) {
+            /* Set new (variable) length in byte two and three of field. Note that
+             * 'field_offset' contains the offset to the actual data, so the field
+             * length is stored at 'field_offset - 2'.
+             */
+            new_field_len = htons(new_field_len);
+            memcpy(rec + field_offset - 2, &new_field_len, sizeof(new_field_len));
+        } else if (new_field_len < 255 && field_len >= 255) {
+            /* The second and third byte of the field must be removed, since the (new) field
+             * length is < 255 and can therefore be stored in the first byte
+             */
+            memmove(rec + field_offset - 2, rec + field_offset, new_field_len);
+            field_offset -= 2;
+            memset(rec + field_offset - 1, new_field_len, 1);
+        } else {
+            /* Set new (variable) length in first byte of field. Note that 'field_offset'
+             * contains the offset to the actual data, so the field length is stored at
+             * 'field_offset - 1'
+             */
+            memset(rec + field_offset - 1, new_field_len, 1);
+        }
+
+        /* Update record length */
+        rec_len -= 6;
+    }
+
+    /* Add new record to message */
+    memcpy(proc->msg + proc->offset, rec, rec_len);
+    proc->offset += rec_len;
+    proc->length += rec_len;
 }

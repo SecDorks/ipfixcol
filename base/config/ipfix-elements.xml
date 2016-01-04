@@ -2583,4 +2583,11 @@
         <dataType>string</dataType>
         <semantic></semantic>
     </element>
+    <element>
+        <enterprise>44913</enterprise>
+        <id>12345</id>
+        <name>Unknown</name>
+        <dataType>string</dataType>
+        <semantic></semantic>
+    </element>
 </ipfix-elements>

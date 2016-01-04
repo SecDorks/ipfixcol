@@ -71,29 +71,29 @@ struct field_mapping {
 };
 
 static struct field_mapping invea_field_mappings[] = {
-    { inveaHttpHostname,    targetHttpHostname },
-    { inveaHttpUrl,         targetHttpUrl },
-    { inveaHttpUserAgent,   targetHttpUserAgent }
+    { invea_http_hostname,      target_http_hostname },
+    { invea_http_url,           target_http_url },
+    { invea_http_user_agent,    target_http_user_agent }
 };
 static struct field_mapping masaryk_field_mappings[] = {
-    { masarykHttpHostname,  targetHttpHostname },
-    { masarykHttpUrl,       targetHttpUrl },
-    { masarykHttpUserAgent, targetHttpUserAgent }
+    { masaryk_http_hostname,    target_http_hostname },
+    { masaryk_http_url,         target_http_url },
+    { masaryk_http_user_agent,  target_http_user_agent }
 };
 static struct field_mapping ntop_field_mappings[] = {
-    { ntopHttpHostname,     targetHttpHostname },
-    { ntopHttpUrl,          targetHttpUrl },
-    { ntopHttpUserAgent,    targetHttpUserAgent }
+    { ntop_http_hostname,       target_http_hostname },
+    { ntop_http_url,            target_http_url },
+    { ntop_http_user_agent,     target_http_user_agent }
 };
 static struct field_mapping ntopv9_field_mappings[] = {
-    { ntopHttpHostnamev9,   targetHttpHostname },
-    { ntopHttpUrlv9,        targetHttpUrl },
-    { ntopHttpUserAgentv9,  targetHttpUserAgent }
+    { ntop_http_hostname_v9,    target_http_hostname },
+    { ntop_http_url_v9,         target_http_url },
+    { ntop_http_user_agent_v9,  target_http_user_agent }
 };
 static struct field_mapping rs_field_mappings[] = {
-    { rsHttpHostname,       targetHttpHostname },
-    { rsHttpUrl,            targetHttpUrl },
-    { rsHttpUserAgent,      targetHttpUserAgent }
+    { rs_http_hostname,         target_http_hostname },
+    { rs_http_url,              target_http_url },
+    { rs_http_user_agent,       target_http_user_agent }
 };
 
 #endif /* HTTPFIELDMERGE_FIELD_MAPPINGS_H_ */

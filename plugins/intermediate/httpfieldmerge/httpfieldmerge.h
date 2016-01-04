@@ -97,10 +97,10 @@ struct httpfieldmerge_config {
 };
 
 struct httpfieldmerge_processor {
-    uint8_t *msg;
-    uint16_t allocated_msg_length, offset;
-    uint32_t length, odid;
     int type;
+    uint8_t *msg;
+    uint16_t allocated_msg_len, offset;
+    uint32_t length, odid;
     
     struct httpfieldmerge_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
     struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */

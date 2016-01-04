@@ -78,63 +78,62 @@ struct ipfix_entity {
         - Instance 3: user agent string
         - Instance 4: unknown?
  */
-#define ciscoHttpHostname       { CISCO_PEN, 12235 }
-#define ciscoHttpUrl            { CISCO_PEN, 12235 }
-#define ciscoHttpUserAgent      { CISCO_PEN, 12235 }
-#define ciscoHttpUnknown        { CISCO_PEN, 12235 }
+#define cisco_http_hostname     { CISCO_PEN, 12235 }
+#define cisco_http_url          { CISCO_PEN, 12235 }
+#define cisco_http_user_agent   { CISCO_PEN, 12235 }
+#define cisco_http_unknown      { CISCO_PEN, 12235 }
 #define cisco_field_count       4
 
-#define inveaHttpHostname       { INVEA_PEN,  1 }
-#define inveaHttpUrl            { INVEA_PEN,  2 }
-#define inveaHttpUserAgent      { INVEA_PEN, 20 }
+#define invea_http_hostname     { INVEA_PEN,  1 }
+#define invea_http_url          { INVEA_PEN,  2 }
+#define invea_http_user_agent   { INVEA_PEN, 20 }
 #define invea_field_count       3
 
-#define masarykHttpHostname     { MASARYK_PEN, 501 }
-#define masarykHttpUrl          { MASARYK_PEN, 502 }
-#define masarykHttpUserAgent    { MASARYK_PEN, 504 }
+#define masaryk_http_hostname   { MASARYK_PEN, 501 }
+#define masaryk_http_url        { MASARYK_PEN, 502 }
+#define masaryk_http_user_agent { MASARYK_PEN, 504 }
 #define masaryk_field_count     3
 
-#define ntopHttpHostname        { NTOP_PEN, 187 }
-#define ntopHttpUrl             { NTOP_PEN, 180 }
-#define ntopHttpUserAgent       { NTOP_PEN, 183 }
+#define ntop_http_hostname      { NTOP_PEN, 187 }
+#define ntop_http_url           { NTOP_PEN, 180 }
+#define ntop_http_user_agent    { NTOP_PEN, 183 }
 #define ntop_field_count        3
 
-#define ntopHttpHostnamev9      { NFV9_CONVERSION_PEN, 24891 } /* Original ID: 57659 */
-#define ntopHttpUrlv9           { NFV9_CONVERSION_PEN, 24884 } /* Original ID: 57652 */
-#define ntopHttpUserAgentv9     { NFV9_CONVERSION_PEN, 24887 } /* Original ID: 57655 */
-// #define ntop_field_count        3 (already defined above)
+#define ntop_http_hostname_v9   { NFV9_CONVERSION_PEN, 24891 } /* Original ID: 57659 */
+#define ntop_http_url_v9        { NFV9_CONVERSION_PEN, 24884 } /* Original ID: 57652 */
+#define ntop_http_user_agent_v9 { NFV9_CONVERSION_PEN, 24887 } /* Original ID: 57655 */
 
-#define rsHttpHostname          { RS_PEN, 20 }
-#define rsHttpUrl               { RS_PEN, 21 }
-#define rsHttpUserAgent         { RS_PEN, 22 }
+#define rs_http_hostname        { RS_PEN, 20 }
+#define rs_http_url             { RS_PEN, 21 }
+#define rs_http_user_agent      { RS_PEN, 22 }
 #define rs_field_count          3
 
-#define targetHttpHostname      { TARGET_PEN, 20 }
-#define targetHttpUrl           { TARGET_PEN, 21 }
-#define targetHttpUserAgent     { TARGET_PEN, 22 }
-
-static struct ipfix_entity target_http_hostname =   { TARGET_PEN, 20 };
-static struct ipfix_entity target_http_url =        { TARGET_PEN, 21 };
-static struct ipfix_entity target_http_user_agent = { TARGET_PEN, 22 };
-static struct ipfix_entity target_unknown =         { TARGET_PEN, 65535 };
+#define target_http_hostname    { TARGET_PEN, 20 }
+#define target_http_url         { TARGET_PEN, 21 }
+#define target_http_user_agent  { TARGET_PEN, 22 }
+#define target_unknown          { TARGET_PEN, 12345 }
+#define target_field_count      4
 
 static struct ipfix_entity cisco_fields[] = {
-    ciscoHttpHostname, ciscoHttpUrl, ciscoHttpUserAgent, ciscoHttpUnknown
+    cisco_http_hostname, cisco_http_url, cisco_http_user_agent, cisco_http_unknown
 };
 static struct ipfix_entity invea_fields[] = {
-    inveaHttpHostname, inveaHttpUrl, inveaHttpUserAgent
+    invea_http_hostname, invea_http_url, invea_http_user_agent
 };
 static struct ipfix_entity masaryk_fields[] = {
-    masarykHttpHostname, masarykHttpUrl, masarykHttpUserAgent
+    masaryk_http_hostname, masaryk_http_url, masaryk_http_user_agent
 };
 static struct ipfix_entity ntop_fields[] = {
-    ntopHttpHostname, ntopHttpUrl, ntopHttpUserAgent
+    ntop_http_hostname, ntop_http_url, ntop_http_user_agent
 };
 static struct ipfix_entity ntopv9_fields[] = {
-    ntopHttpHostnamev9, ntopHttpUrlv9, ntopHttpUserAgentv9
+    ntop_http_hostname_v9, ntop_http_url_v9, ntop_http_user_agent_v9
 };
 static struct ipfix_entity rs_fields[] = {
-    rsHttpHostname, rsHttpUrl, rsHttpUserAgent
+    rs_http_hostname, rs_http_url, rs_http_user_agent
+};
+static struct ipfix_entity target_fields[] = {
+    target_http_hostname, target_http_url, target_http_user_agent, target_unknown
 };
 
 #endif /* HTTPFIELDMERGE_FIELDS_H_ */
