@@ -352,27 +352,11 @@ int intermediate_process_message(void *config, void *message)
     for (i = 0; i < MSG_MAX_OTEMPL_SETS && msg->opt_templ_set[i]; ++i) {
         prev_offset = proc.offset;
 
-        /* Get template ID. This ID is used for looking up vendor information in hashmap. Since
-         * all records in a set will be produced by a flow exporter from the same vendor, taking
-         * the first record's template ID should do.
-         */
-        uint16_t template_id = ntohs(msg->opt_templ_set[i]->first_record.template_id);
-
-        /* Get structure from hashmap that provides information about current template. As
-         * described above, this is only an approximation (since we deal here with template
-         * sets instead of records), which is why we define <templ_stats> (and <template_id>)
-         * in local scope.
-         */
-        struct templ_stats_elem_t *templ_stats;
-        HASH_FIND(hh, proc.plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
-
-        /* Add template set header, and update offset and length */
-        memcpy(proc.msg + proc.offset, &(msg->opt_templ_set[i]->header), 4);
-        proc.offset += 4;
-        proc.length = 4;
-
-        tset_callback_f tset_proc = pen_to_template_set_processor(templ_stats->http_fields_pen);
-        template_set_process_records((struct ipfix_template_set *) msg->opt_templ_set[i], proc.type, tset_proc, (void *) &proc);
+        /* Copy full option template set to new message */
+        uint16_t set_len = ntohs(msg->opt_templ_set[i]->header.length);
+        memcpy(proc.msg + proc.offset, msg->opt_templ_set[i], set_len);
+        proc.offset += set_len;
+        proc.length = set_len;
 
         /* Check whether a new options template set was added by 'other_template_rec_processor' */
         if (proc.offset == prev_offset + 4) {
@@ -416,26 +400,10 @@ int intermediate_process_message(void *config, void *message)
         struct templ_stats_elem_t *templ_stats;
         HASH_FIND(hh, proc.plugin_conf->templ_stats, &new_templ->template_id, sizeof(uint16_t), templ_stats);
 
-        /* Skip further processing in any of the following situations:
-         *      - Structure could not be found in hashmap
-         *      - Template does not include HTTP IEs (hostname, URL)
-         *      - Template already uses the unified set of HTTP IEs
-         */
-        uint8_t skip_data_rec_processing = 0 && (templ_stats == NULL
-                || templ_stats->http_fields_pen == 0
-                || templ_stats->http_fields_pen == TARGET_PEN);
-        if (skip_data_rec_processing) {
-            /* Add full data set (leaving it untouched), and update offset and length */
-            uint16_t set_len = ntohs(msg->data_couple[i].data_set->header.length);
-            memcpy(proc.msg + proc.offset, msg->data_couple[i].data_set, set_len);
-            proc.offset += set_len;
-            proc.length = set_len;
-        } else {
-            /* Add data set header, and update offset and length */
-            memcpy(proc.msg + proc.offset, &(msg->data_couple[i].data_set->header), sizeof(struct ipfix_set_header));
-            proc.offset += sizeof(struct ipfix_set_header);
-            proc.length = sizeof(struct ipfix_set_header);
-        }
+        /* Add data set header, and update offset and length */
+        memcpy(proc.msg + proc.offset, &(msg->data_couple[i].data_set->header), sizeof(struct ipfix_set_header));
+        proc.offset += sizeof(struct ipfix_set_header);
+        proc.length = sizeof(struct ipfix_set_header);
 
         /* Update 'data_couple' by adjusting pointers to updated data structures */
         new_msg->data_couple[new_i].data_set = ((struct ipfix_data_set *) ((uint8_t *) proc.msg + proc.offset - sizeof(struct ipfix_set_header)));
@@ -446,18 +414,27 @@ int intermediate_process_message(void *config, void *message)
         new_templ->last_transmission = templ->last_transmission;
         tm_template_reference_inc(new_templ);
 
-        /* Don't process individual data records in any of the following situations:
+        /* Process data records. Skip individual data record processing in any
+         * of the following situations:
          *      - Structure could not be found in hashmap
          *      - Template does not include HTTP IEs (hostname, URL)
          *      - Template already uses the unified set of HTTP IEs
          */
-        if (!skip_data_rec_processing) {
+        if (templ_stats == NULL
+                || templ_stats->http_fields_pen == 0
+                || templ_stats->http_fields_pen == TARGET_PEN) {
+            /* Add all data records (leaving it untouched), and update offset and length */
+            uint16_t total_recs_len = ntohs(msg->data_couple[i].data_set->header.length) - sizeof(struct ipfix_set_header);
+            memcpy(proc.msg + proc.offset, msg->data_couple[i].data_set->records, total_recs_len);
+            proc.offset += total_recs_len;
+            proc.length += total_recs_len;
+        } else {
             dset_callback_f dset_proc = pen_to_data_set_processor(templ_stats->http_fields_pen);
             data_set_process_records(msg->data_couple[i].data_set, new_templ, dset_proc, (void *) &proc);
-
-            new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
-            new_msg->data_couple[new_i].data_set->header.flowset_id = htons(new_msg->data_couple[new_i].data_template->template_id);
         }
+
+        new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
+        new_msg->data_couple[new_i].data_set->header.flowset_id = htons(new_msg->data_couple[new_i].data_template->template_id);
 
         /* We use a second loop index for cases where a data_couple does not feature a template,
          * so no 'gaps' will be present in the list of data sets.
