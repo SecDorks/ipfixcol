@@ -162,6 +162,41 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 
         templ_stats->http_fields_pen_determined = 1;
     }
+
+    /* Store statistics about OD, but only if it hasn't been stored before */
+    if (templ_stats->http_fields_pen_determined == 1 && templ_stats->http_fields_pen != 0) {
+        /* Prepare lookup key */
+        struct od_stats_key_t *od_stats_key = calloc(1, proc->plugin_conf->od_stats_key_len);
+        if (od_stats_key == NULL) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            return;
+        }
+
+        /* Set key values */
+        od_stats_key->od_id = proc->odid;
+        od_stats_key->ip_id = proc->plugin_conf->ip_id;
+
+        /* Store item in hashmap, in case it does not exist yet */
+        struct od_stats_elem_t *od_stat;
+        HASH_FIND(hh, proc->plugin_conf->od_stats, &od_stats_key->od_id, proc->plugin_conf->od_stats_key_len, od_stat);
+        if (od_stat == NULL) {
+            od_stat = calloc(1, sizeof(struct od_stats_elem_t));
+
+            if (templ_stats->http_fields_pen == TARGET_PEN) {
+                od_stat->tset_proc = NULL;
+                od_stat->dset_proc = NULL;
+            } else {
+                od_stat->tset_proc = pen_to_template_set_processor(templ_stats->http_fields_pen);
+                od_stat->dset_proc = pen_to_data_set_processor(templ_stats->http_fields_pen);
+            }
+
+            od_stat->od_id = proc->odid;
+            od_stat->ip_id = proc->plugin_conf->ip_id;
+            HASH_ADD(hh, proc->plugin_conf->od_stats, od_id, proc->plugin_conf->od_stats_key_len, od_stat);
+        }
+
+        free(od_stats_key);
+    }
 }
 
 /**
@@ -189,8 +224,12 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
     conf->ip_id = ip_id;
     conf->tm = template_mgr;
 
-    /* Initialize (empty) hashmap */
+    /* Initialize (empty) hashmaps */
     conf->templ_stats = NULL;
+    conf->od_stats = NULL;
+    conf->od_stats_key_len = offsetof(struct od_stats_elem_t, ip_id)
+            + sizeof(uint32_t) /* Last key component, ip_id, is if type 'uint32_t' */
+            - offsetof(struct od_stats_elem_t, od_id);
 
     *config = conf;
 
@@ -295,28 +334,21 @@ int intermediate_process_message(void *config, void *message)
          */
         template_set_process_records(msg->templ_set[i], proc.type, &templates_stat_processor, (void *) &proc);
 
-        /* Get template ID. This ID is used for looking up vendor information in hashmap. Since
-         * all records in a set will be produced by a flow exporter from the same vendor, taking
-         * the first record's template ID should do.
-         */
-        uint16_t template_id = ntohs(msg->templ_set[i]->first_record.template_id);
+        /* Prepare OD statistics hashmap lookup key */
+        struct od_stats_key_t *od_stats_key = calloc(1, proc.plugin_conf->od_stats_key_len);
+        if (!od_stats_key) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            return 1;
+        }
 
-        /* Get structure from hashmap that provides information about current template. As
-         * described above, this is only an approximation (since we deal here with template
-         * sets instead of records), which is why we define <templ_stats> (and <template_id>)
-         * in local scope.
-         */
-        struct templ_stats_elem_t *templ_stats;
-        HASH_FIND(hh, proc.plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+        /* Set key values */
+        od_stats_key->od_id = proc.odid;
+        od_stats_key->ip_id = proc.plugin_conf->ip_id;
 
-        /* Skip further processing in any of the following situations:
-         *      - Structure could not be found in hashmap
-         *      - Template does not include HTTP IEs (hostname, URL)
-         *      - Template already uses the unified set of HTTP IEs
-         */
-        if (templ_stats == NULL
-                || templ_stats->http_fields_pen == 0
-                || templ_stats->http_fields_pen == TARGET_PEN) {
+        /* Retrieve OD statistics from hashmap */
+        struct od_stats_elem_t *od_stat;
+        HASH_FIND(hh, proc.plugin_conf->od_stats, &od_stats_key->od_id, proc.plugin_conf->od_stats_key_len, od_stat);
+        if (od_stat == NULL || od_stat->tset_proc == NULL) {
             /* Copy full template set to new message */
             uint16_t set_len = ntohs(msg->templ_set[i]->header.length);
             memcpy(proc.msg + proc.offset, msg->templ_set[i], set_len);
@@ -329,9 +361,10 @@ int intermediate_process_message(void *config, void *message)
             proc.length = 4;
 
             /* Process template set records; select processor based on PEN */
-            tset_callback_f tset_proc = pen_to_template_set_processor(templ_stats->http_fields_pen);
-            template_set_process_records(msg->templ_set[i], proc.type, tset_proc, (void *) &proc);
+            template_set_process_records(msg->templ_set[i], proc.type, od_stat->tset_proc, (void *) &proc);
         }
+
+        free(od_stats_key);
 
         /* Check whether a new template set was added by template record processor */
         if (proc.offset == prev_offset + 4) { /* No new template set record was added */
@@ -380,7 +413,6 @@ int intermediate_process_message(void *config, void *message)
          * be caused by a problem in a previous intermediate plugin.
          */
         if (!templ) {
-            MSG_WARNING(msg_module, "[%u] Data couple features no template (set: %u)", msg->input_info->odid, i);
             continue;
         }
 
@@ -391,14 +423,6 @@ int intermediate_process_message(void *config, void *message)
             /* Assume that template was not modified by this plugin if new template was not registered in template manager */
             new_templ = templ;
         }
-
-        /* Get structure from hashmap that provides information about current template. As
-         * described above, this is only an approximation (since we deal here with template
-         * sets instead of records), which is why we define <templ_stats> (and <template_id>)
-         * in local scope.
-         */
-        struct templ_stats_elem_t *templ_stats;
-        HASH_FIND(hh, proc.plugin_conf->templ_stats, &new_templ->template_id, sizeof(uint16_t), templ_stats);
 
         /* Add data set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->data_couple[i].data_set->header), sizeof(struct ipfix_set_header));
@@ -414,24 +438,32 @@ int intermediate_process_message(void *config, void *message)
         new_templ->last_transmission = templ->last_transmission;
         tm_template_reference_inc(new_templ);
 
-        /* Process data records. Skip individual data record processing in any
-         * of the following situations:
-         *      - Structure could not be found in hashmap
-         *      - Template does not include HTTP IEs (hostname, URL)
-         *      - Template already uses the unified set of HTTP IEs
-         */
-        if (templ_stats == NULL
-                || templ_stats->http_fields_pen == 0
-                || templ_stats->http_fields_pen == TARGET_PEN) {
+        /* Prepare OD statistics hashmap lookup key */
+        struct od_stats_key_t *od_stats_key = calloc(1, proc.plugin_conf->od_stats_key_len);
+        if (!od_stats_key) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            return 1;
+        }
+
+        /* Set key values */
+        od_stats_key->od_id = proc.odid;
+        od_stats_key->ip_id = proc.plugin_conf->ip_id;
+
+        /* Retrieve OD statistics from hashmap */
+        struct od_stats_elem_t *od_stat;
+        HASH_FIND(hh, proc.plugin_conf->od_stats, &od_stats_key->od_id, proc.plugin_conf->od_stats_key_len, od_stat);
+        if (od_stat == NULL || od_stat->tset_proc == NULL) {
             /* Add all data records (leaving it untouched), and update offset and length */
             uint16_t total_recs_len = ntohs(msg->data_couple[i].data_set->header.length) - sizeof(struct ipfix_set_header);
             memcpy(proc.msg + proc.offset, msg->data_couple[i].data_set->records, total_recs_len);
             proc.offset += total_recs_len;
             proc.length += total_recs_len;
         } else {
-            dset_callback_f dset_proc = pen_to_data_set_processor(templ_stats->http_fields_pen);
-            data_set_process_records(msg->data_couple[i].data_set, new_templ, dset_proc, (void *) &proc);
+            /* Process template set records; select processor based on PEN */
+            data_set_process_records(msg->data_couple[i].data_set, new_templ, od_stat->dset_proc, (void *) &proc);
         }
+
+        free(od_stats_key);
 
         new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
         new_msg->data_couple[new_i].data_set->header.flowset_id = htons(new_msg->data_couple[new_i].data_template->template_id);
@@ -487,10 +519,17 @@ int intermediate_close(void *config)
     conf = (struct httpfieldmerge_config *) config;
 
     /* Clean up templ_stats hashmap */
-    struct templ_stats_elem_t *current_templ_stats, *tmp;
-    HASH_ITER(hh, conf->templ_stats, current_templ_stats, tmp) {
+    struct templ_stats_elem_t *current_templ_stats, *templ_tmp;
+    HASH_ITER(hh, conf->templ_stats, current_templ_stats, templ_tmp) {
         HASH_DEL(conf->templ_stats, current_templ_stats);
         free(current_templ_stats); 
+    }
+
+    /* Clean up od_stats hashmap */
+    struct od_stats_elem_t *current_od_stats, *od_tmp;
+    HASH_ITER(hh, conf->od_stats, current_od_stats, od_tmp) {
+        HASH_DEL(conf->od_stats, current_od_stats);
+        free(current_od_stats);
     }
 
     free(conf);
