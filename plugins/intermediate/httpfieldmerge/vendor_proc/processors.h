@@ -1,5 +1,5 @@
 /*
- * \file httpfieldmerge.h
+ * \file vendor_proc/prcessors.h
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'httpfieldmerge' intermediate plugin.
  *
@@ -60,72 +60,14 @@
  *
  */
 
-#ifndef HTTPFIELDMERGE_H_
-#define HTTPFIELDMERGE_H_
+#ifndef HTTPFIELDMERGE_PROCESSORS_H_
+#define HTTPFIELDMERGE_PROCESSORS_H_
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <ipfixcol.h>
 
-#include "uthash.h"
+tset_callback_f pen_to_template_set_processor(uint32_t pen);
+dset_callback_f pen_to_data_set_processor(uint32_t pen);
 
-/* Identifier for MSG_* macros */
-#define msg_module "httpfieldmerge"
-
-#define NFV9_CONVERSION_PEN     0xFFFFFFFF
-#define TEMPL_MAX_LEN           100000
-
-struct templ_stats_elem_t {
-    UT_hash_handle hh;              /* Hash handle for internal hash functioning */
-    uint32_t http_fields_pen;       /* Exporter PEN in case template contains HTTP-related fields */
-    int http_fields_pen_determined; /* Indicates whether the PEN belonging HTTP-related has been determined before */
-    int id;                         /* Hash key */
-};
-
-/* Hash element that contains information on the vendor (and related
- * enterprise-specific fields) of an observation domain.
- */
-struct od_stats_elem_t {
-    UT_hash_handle hh;              /* Hash handle for internal hash functioning */
-    tset_callback_f tset_proc;      /* Processor for (option) template sets */
-    dset_callback_f dset_proc;      /* Processor for data sets */
-    uint32_t od_id;                 /* Hash key - component 1 */
-    uint32_t ip_id;                 /* Hash key - component 2 */
-};
-
-/* Structure used as key in od_stats_elem_t */
-struct od_stats_key_t {
-    uint32_t od_id;
-    uint32_t ip_id;
-};
-
-/* Stores plugin's internal configuration */
-struct httpfieldmerge_config {
-    char *params;
-    void *ip_config;
-    uint32_t ip_id;
-    struct ipfix_template_mgr *tm;
-
-    /* Hashmap for storing the IP version used in every template by template ID. We
-     * place this structure in proxy_config rather than proxy_processor, since
-     * it should be persistent between various IPFIX messages (and proxy processor
-     * is reset for every IPFIX message).
-     */
-    struct templ_stats_elem_t *templ_stats;
-
-    /* Hashmap for storing callback processor references for every tuple of ODID and
-     * IP address, so for every unique source.
-     */
-    uint16_t od_stats_key_len;
-    struct od_stats_elem_t *od_stats;
-};
-
-struct httpfieldmerge_processor {
-    int type;
-    uint8_t *msg;
-    uint16_t allocated_msg_len, offset;
-    uint32_t length, odid;
-    
-    struct httpfieldmerge_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
-    struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */
-};
-
-#endif /* HTTPFIELDMERGE_H_ */
+#endif /* HTTPFIELDMERGE_PROCESSORS_H_ */

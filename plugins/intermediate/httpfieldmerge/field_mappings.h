@@ -1,5 +1,5 @@
 /*
- * \file httpfieldmerge.h
+ * \file field_mappings.h
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'httpfieldmerge' intermediate plugin.
  *
@@ -60,72 +60,40 @@
  *
  */
 
-#ifndef HTTPFIELDMERGE_H_
-#define HTTPFIELDMERGE_H_
+#ifndef HTTPFIELDMERGE_FIELD_MAPPINGS_H_
+#define HTTPFIELDMERGE_FIELD_MAPPINGS_H_
 
-#include <ipfixcol.h>
+#include "fields.h"
 
-#include "uthash.h"
-
-/* Identifier for MSG_* macros */
-#define msg_module "httpfieldmerge"
-
-#define NFV9_CONVERSION_PEN     0xFFFFFFFF
-#define TEMPL_MAX_LEN           100000
-
-struct templ_stats_elem_t {
-    UT_hash_handle hh;              /* Hash handle for internal hash functioning */
-    uint32_t http_fields_pen;       /* Exporter PEN in case template contains HTTP-related fields */
-    int http_fields_pen_determined; /* Indicates whether the PEN belonging HTTP-related has been determined before */
-    int id;                         /* Hash key */
+struct field_mapping {
+    struct ipfix_entity from;
+    struct ipfix_entity to;
 };
 
-/* Hash element that contains information on the vendor (and related
- * enterprise-specific fields) of an observation domain.
- */
-struct od_stats_elem_t {
-    UT_hash_handle hh;              /* Hash handle for internal hash functioning */
-    tset_callback_f tset_proc;      /* Processor for (option) template sets */
-    dset_callback_f dset_proc;      /* Processor for data sets */
-    uint32_t od_id;                 /* Hash key - component 1 */
-    uint32_t ip_id;                 /* Hash key - component 2 */
+static struct field_mapping invea_field_mappings[] = {
+    { invea_http_hostname,      target_http_hostname },
+    { invea_http_url,           target_http_url },
+    { invea_http_user_agent,    target_http_user_agent }
+};
+static struct field_mapping masaryk_field_mappings[] = {
+    { masaryk_http_hostname,    target_http_hostname },
+    { masaryk_http_url,         target_http_url },
+    { masaryk_http_user_agent,  target_http_user_agent }
+};
+static struct field_mapping ntop_field_mappings[] = {
+    { ntop_http_hostname,       target_http_hostname },
+    { ntop_http_url,            target_http_url },
+    { ntop_http_user_agent,     target_http_user_agent }
+};
+static struct field_mapping ntopv9_field_mappings[] = {
+    { ntop_http_hostname_v9,    target_http_hostname },
+    { ntop_http_url_v9,         target_http_url },
+    { ntop_http_user_agent_v9,  target_http_user_agent }
+};
+static struct field_mapping rs_field_mappings[] = {
+    { rs_http_hostname,         target_http_hostname },
+    { rs_http_url,              target_http_url },
+    { rs_http_user_agent,       target_http_user_agent }
 };
 
-/* Structure used as key in od_stats_elem_t */
-struct od_stats_key_t {
-    uint32_t od_id;
-    uint32_t ip_id;
-};
-
-/* Stores plugin's internal configuration */
-struct httpfieldmerge_config {
-    char *params;
-    void *ip_config;
-    uint32_t ip_id;
-    struct ipfix_template_mgr *tm;
-
-    /* Hashmap for storing the IP version used in every template by template ID. We
-     * place this structure in proxy_config rather than proxy_processor, since
-     * it should be persistent between various IPFIX messages (and proxy processor
-     * is reset for every IPFIX message).
-     */
-    struct templ_stats_elem_t *templ_stats;
-
-    /* Hashmap for storing callback processor references for every tuple of ODID and
-     * IP address, so for every unique source.
-     */
-    uint16_t od_stats_key_len;
-    struct od_stats_elem_t *od_stats;
-};
-
-struct httpfieldmerge_processor {
-    int type;
-    uint8_t *msg;
-    uint16_t allocated_msg_len, offset;
-    uint32_t length, odid;
-    
-    struct httpfieldmerge_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
-    struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */
-};
-
-#endif /* HTTPFIELDMERGE_H_ */
+#endif /* HTTPFIELDMERGE_FIELD_MAPPINGS_H_ */

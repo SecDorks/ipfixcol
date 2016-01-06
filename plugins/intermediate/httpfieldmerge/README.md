@@ -16,7 +16,7 @@ set of fields. The following fields are currently supported:
 
  - HTTP hostname
  - HTTP URL
- - HTTP User Agent
+ - HTTP user agent (UA)
 
  Specifically, this plugin performs only a single task:
 
@@ -26,6 +26,7 @@ set of fields. The following fields are currently supported:
 
 HTTP-related fields from the following vendors are currently supported:
 
+ - Cisco,               PEN: 9
  - Masaryk University,  PEN: 16982
  - INVEA-TECH,          PEN: 39499
  - ntop,                PEN: 35632

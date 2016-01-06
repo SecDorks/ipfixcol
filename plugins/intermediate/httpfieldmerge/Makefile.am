@@ -11,7 +11,7 @@ plugins_LTLIBRARIES = ipfixcol-httpfieldmerge-inter.la
 ipfixcol_httpfieldmerge_inter_la_LDFLAGS = -module -avoid-version -shared
 ipfixcol_httpfieldmerge_inter_la_LIBADD = -lrt
 
-ipfixcol_httpfieldmerge_inter_la_SOURCES = httpfieldmerge.h httpfieldmerge.c uthash.h
+ipfixcol_httpfieldmerge_inter_la_SOURCES = fields.h pens.h field_mappings.h httpfieldmerge.h httpfieldmerge.c uthash.h vendor_proc/processors.h vendor_proc/processors.c vendor_proc/cisco.h vendor_proc/cisco.c vendor_proc/other.h vendor_proc/other.c
 
 .PHONY: clean-local
 clean-local:
