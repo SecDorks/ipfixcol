@@ -642,6 +642,14 @@
             <element>e44913id21</element>
         </value>
     </column>
+    <column>
+        <name>HTTP User Agent</name>
+        <alias>%rshttpua</alias>
+        <width>64</width>
+        <value type="plain">
+            <element>e44913id22</element>
+        </value>
+    </column>
 
     <!-- Fields with operators -->
     <column>
