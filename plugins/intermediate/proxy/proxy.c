@@ -1312,7 +1312,7 @@ int intermediate_process_message(void *config, void *message)
          * be caused by a problem in a previous intermediate plugin.
          */
         if (!templ) {
-            MSG_WARNING(msg_module, "[%u] Data couple features no template (set: %u)", msg->input_info->odid, i);
+            // MSG_WARNING(msg_module, "[%u] Data couple features no template (set: %u)", msg->input_info->odid, i);
             continue;
         }
 
