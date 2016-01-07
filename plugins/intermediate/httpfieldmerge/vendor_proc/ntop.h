@@ -1,5 +1,5 @@
 /*
- * \file vendor_proc/prcessors.c
+ * \file vendor_proc/ntop.h
  * \author Kirc <kirc&secdorks.net>
  * \brief IPFIXcol 'httpfieldmerge' intermediate plugin.
  *
@@ -60,55 +60,28 @@
  *
  */
 
-#include "pens.h"
-#include "processors.h"
+#ifndef HTTPFIELDMERGE_PROCESSORS_NTOP_H_
+#define HTTPFIELDMERGE_PROCESSORS_NTOP_H_
 
-#include "cisco.h"
-#include "ntop.h"
-#include "other.h"
+#include <ipfixcol.h>
 
 /**
- * \brief Retrieves a reference to a template set processor function based on a supplied
- * PEN.
+ * \brief Processing of template records and option template records
  *
- * \param[in] pen IANA Private Enterprise Number
- * \return Reference to template set processor function if supplied PEN is known, NULL
- * otherwise
+ * \param[in] rec Pointer to template record
+ * \param[in] rec_len Template record length
+ * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
  */
-tset_callback_f pen_to_template_set_processor(uint32_t pen)
-{
-    tset_callback_f proc = NULL;
-    switch (pen) {
-        case CISCO_PEN:     proc = &cisco_template_rec_processor;
-                            break;
-
-        default:            proc = &other_template_rec_processor;
-                            break;
-    }
-
-    return proc;
-}
+// void ntop_template_rec_processor(uint8_t *rec, int rec_len, void *data);
 
 /**
- * \brief Retrieves a reference to a data set processor function based on a supplied
- * PEN.
+ * \brief Processing of data records
  *
- * \param[in] pen IANA Private Enterprise Number
- * \return Reference to field processor function if supplied PEN is known, NULL otherwise
+ * \param[in] rec Pointer to data record
+ * \param[in] rec_len Data record length
+ * \param[in] templ IPFIX template corresponding to the data record
+ * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
  */
-dset_callback_f pen_to_data_set_processor(uint32_t pen)
-{
-    dset_callback_f proc = NULL;
-    switch (pen) {
-        case CISCO_PEN:     proc = &cisco_data_rec_processor;
-                            break;
+void ntop_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data);
 
-        case NTOP_PEN:      proc = &ntop_data_rec_processor;
-                            break;
-
-        default:            proc = &other_data_rec_processor;
-                            break;
-    }
-
-    return proc;
-}
+#endif /* HTTPFIELDMERGE_PROCESSORS_NTOP_H_ */

@@ -80,7 +80,7 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data);
  * \param[in] rec Pointer to data record
  * \param[in] rec_len Data record length
  * \param[in] templ IPFIX template corresponding to the data record
- * \param[in] data Any-type data structure (here: proxy_processor)
+ * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
  */
 void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data);
 
