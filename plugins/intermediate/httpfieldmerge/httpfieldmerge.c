@@ -338,6 +338,9 @@ int intermediate_process_message(void *config, void *message)
         struct od_stats_key_t *od_stats_key = calloc(1, proc.plugin_conf->od_stats_key_len);
         if (!od_stats_key) {
             MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            free(proc.key);
+            free(proc.msg);
+            free(new_msg);
             return 1;
         }
 
@@ -442,6 +445,9 @@ int intermediate_process_message(void *config, void *message)
         struct od_stats_key_t *od_stats_key = calloc(1, proc.plugin_conf->od_stats_key_len);
         if (!od_stats_key) {
             MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            free(proc.key);
+            free(proc.msg);
+            free(new_msg);
             return 1;
         }
 

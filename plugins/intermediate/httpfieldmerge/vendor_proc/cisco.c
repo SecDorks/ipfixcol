@@ -132,6 +132,7 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
         memcpy(proc->msg + proc->offset, new_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
+        free(new_rec);
         return;
     }
 
