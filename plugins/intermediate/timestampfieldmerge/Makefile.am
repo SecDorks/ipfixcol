@@ -11,7 +11,7 @@ plugins_LTLIBRARIES = ipfixcol-timestampfieldmerge-inter.la
 ipfixcol_timestampfieldmerge_inter_la_LDFLAGS = -module -avoid-version -shared
 ipfixcol_timestampfieldmerge_inter_la_LIBADD = -lrt
 
-ipfixcol_timestampfieldmerge_inter_la_SOURCES = timestampfieldmerge.h timestampfieldmerge.c
+ipfixcol_timestampfieldmerge_inter_la_SOURCES = timestampfieldmerge.h timestampfieldmerge.c uthash.h
 
 .PHONY: clean-local
 clean-local:
