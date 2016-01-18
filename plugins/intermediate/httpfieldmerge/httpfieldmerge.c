@@ -88,7 +88,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
     (void) rec_len;
     int i;
 
-    /* Determine IP versions used within this template */
+    /* Retrieve or create new hashmap entry */
     struct templ_stats_elem_t *templ_stats;
     uint16_t template_id = ntohs(record->template_id);
     HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);

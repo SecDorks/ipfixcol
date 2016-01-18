@@ -50,28 +50,52 @@
 
 #include <ipfixcol.h>
 
+#include "uthash.h"
+
 /* Identifier for MSG_* macros */
 #define msg_module "timestampfieldmerge"
 
-#define NFV9_CONVERSION_PEN     0xFFFFFFFF
-#define TEMPL_MAX_LEN           100000
+#define flowEndSysUpTime 21
+#define flowStartSysUpTime 22
+
+struct templ_stats_elem_t {
+    UT_hash_handle hh;                  /* Hash handle for internal hash functioning */
+    uint16_t start_time_field_ID;       /* Field ID of start time field that must be converted */
+    uint16_t end_time_field_ID;         /* Field ID of end time field that must be converted */
+    uint32_t od_id;                     /* Hash key - component 1 */
+    uint32_t ip_id;                     /* Hash key - component 2 */
+    uint16_t template_id;               /* Hash key - component 3 */
+};
+
+/* Structure used as key in templ_stats_elem_t */
+struct templ_stats_key_t {
+    uint32_t od_id;
+    uint32_t ip_id;
+    uint16_t template_id;
+};
 
 /* Stores plugin's internal configuration */
-// struct httpfieldmerge_config {
-//     char *params;
-//     void *ip_config;
-//     uint32_t ip_id;
-//     struct ipfix_template_mgr *tm;
-// };
+struct plugin_config {
+    char *params;
+    void *ip_config;
+    uint32_t ip_id;
+    struct ipfix_template_mgr *tm;
 
-// struct httpfieldmerge_processor {
-//     int type;
-//     uint8_t *msg;
-//     uint16_t allocated_msg_len, offset;
-//     uint32_t length, odid;
+    /* Hashmap for storing information on the presence of certain timestamp fields for
+     * every tuple of ODID and IP address, so for every unique source.
+     */
+    uint16_t templ_stats_key_len;
+    struct templ_stats_elem_t *templ_stats;
+};
+
+struct processor {
+    int type;
+    uint8_t *msg;
+    uint16_t allocated_msg_len, offset;
+    uint32_t length, odid;
     
-//     struct httpfieldmerge_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
-//     struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */
-// };
+    struct plugin_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
+    struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */
+};
 
 #endif /* TIMESTAMPFIELDMERGE_H_ */
