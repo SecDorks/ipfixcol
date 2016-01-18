@@ -55,13 +55,19 @@
 /* Identifier for MSG_* macros */
 #define msg_module "timestampfieldmerge"
 
-#define flowEndSysUpTime 21
+#define BYTES_4         4
+#define TEMPL_MAX_LEN   100000
+
 #define flowStartSysUpTime 22
+#define flowEndSysUpTime 21
+
+#define flowStartMilliseconds 152
+#define flowEndMilliseconds 153
 
 struct templ_stats_elem_t {
     UT_hash_handle hh;                  /* Hash handle for internal hash functioning */
-    uint16_t start_time_field_ID;       /* Field ID of start time field that must be converted */
-    uint16_t end_time_field_ID;         /* Field ID of end time field that must be converted */
+    uint16_t start_time_field_id;       /* Field ID of start time field that must be converted */
+    uint16_t end_time_field_id;         /* Field ID of end time field that must be converted */
     uint32_t od_id;                     /* Hash key - component 1 */
     uint32_t ip_id;                     /* Hash key - component 2 */
     uint16_t template_id;               /* Hash key - component 3 */

@@ -67,7 +67,6 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
     struct processor *proc = (struct processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
     (void) rec_len;
-    int i;
 
     /* Prepare hashmap lookup key */
     struct templ_stats_key_t *templ_stats_key = calloc(1, proc->plugin_conf->templ_stats_key_len);
@@ -93,8 +92,8 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
             return;
         }
 
-        templ_stats->start_time_field_ID = 0;
-        templ_stats->end_time_field_ID = 0;
+        templ_stats->start_time_field_id = 0;
+        templ_stats->end_time_field_id = 0;
         templ_stats->od_id = proc->odid;
         templ_stats->ip_id = proc->plugin_conf->ip_id;
         templ_stats->template_id = template_id;
@@ -103,14 +102,31 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         HASH_ADD(hh, proc->plugin_conf->templ_stats, od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
     }
 
+    free(templ_stats_key);
+
+    /* Check for flowStartMilliseconds, e0id152 */
+    if (template_record_get_field(record, 0, flowStartMilliseconds, NULL) != NULL) {
+        templ_stats->start_time_field_id = flowStartMilliseconds;
+    }
+
+    /* Check for flowEndMilliseconds, e0id153 */
+    if (template_record_get_field(record, 0, flowEndMilliseconds, NULL) != NULL) {
+        templ_stats->end_time_field_id = flowEndMilliseconds;
+    }
+
+    /* Stop processing if target fields are already present in template record */
+    if (templ_stats->start_time_field_id != 0 && templ_stats->end_time_field_id != 0) {
+        return;
+    }
+
     /* Check for flowStartSysUpTime, e0id22 */
     if (template_record_get_field(record, 0, flowStartSysUpTime, NULL) != NULL) {
-        templ_stats->start_time_field_ID = flowStartSysUpTime;
+        templ_stats->start_time_field_id = flowStartSysUpTime;
     }
 
     /* Check for flowEndSysUpTime, e0id21 */
     if (template_record_get_field(record, 0, flowEndSysUpTime, NULL) != NULL) {
-        templ_stats->end_time_field_ID = flowEndSysUpTime;
+        templ_stats->end_time_field_id = flowEndSysUpTime;
     }
 }
 
@@ -123,7 +139,134 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
  */
 void template_record_processor(uint8_t *rec, int rec_len, void *data)
 {
+    struct processor *proc = (struct processor *) data;
+    struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
+    struct ipfix_template_record *new_rec;
 
+    /* Don't process options template records */
+    if (proc->type == TM_OPTIONS_TEMPLATE) {
+        /* Copy record to new message */
+        memcpy(proc->msg + proc->offset, old_rec, rec_len);
+        proc->offset += rec_len;
+        proc->length += rec_len;
+        return;
+    }
+
+    /* Get structure from hashmap that provides information about current template */
+    struct templ_stats_key_t *templ_stats_key = calloc(1, proc->plugin_conf->templ_stats_key_len);
+    if (!templ_stats_key) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
+    uint16_t template_id = ntohs(old_rec->template_id);
+    MSG_DEBUG(msg_module, " > [template_record_processor] Old template ID: %u", template_id);
+
+    /* Set key values */
+    templ_stats_key->od_id = proc->odid;
+    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    templ_stats_key->template_id = template_id;
+
+    /* Retrieve statistics from hashmap */
+    struct templ_stats_elem_t *templ_stats;
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
+    if (templ_stats == NULL) {
+        MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
+
+        /* Copy existing record to new message */
+        memcpy(proc->msg + proc->offset, old_rec, rec_len);
+        proc->offset += rec_len;
+        proc->length += rec_len;
+        return;
+    }
+
+    /* Skip further processing if template does not feature any of the timestamp fields
+     * that require processing.
+     */
+    if (templ_stats->start_time_field_id != flowStartSysUpTime && templ_stats->end_time_field_id == flowEndSysUpTime) {
+        /* Copy existing record to new message */
+        memcpy(proc->msg + proc->offset, old_rec, rec_len);
+        proc->offset += rec_len;
+        proc->length += rec_len;
+        return;
+    }
+
+    /* Copy original template record; BYTES_4 is because target timestamps are
+     * 8 bytes in size instead of 4 bytes
+     */
+    new_rec = calloc(1, rec_len + (2 * BYTES_4));
+    if (!new_rec) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
+    memcpy(new_rec, old_rec, rec_len);
+
+    /* Find timestamp fields and replace them; iterate over all fields in template record */
+    uint16_t count = 0, index = 0;
+    uint16_t field_id;
+    while (count < ntohs(new_rec->count)
+            && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
+        field_id = ntohs(new_rec->fields[index].ie.id);
+        if (field_id == flowStartSysUpTime) {
+            new_rec->fields[index].ie.id = htons(flowStartMilliseconds);
+        } else if (field_id == flowEndSysUpTime) {
+            new_rec->fields[index].ie.id = htons(flowEndMilliseconds);
+        }
+
+        /* PEN comes just after the IE, before the next IE; skip it */
+        if (field_id & 0x8000) {
+            ++index;
+        }
+
+        ++count;
+        ++index;
+    }
+
+    /* Store it in template manager */
+    proc->key->tid = template_id;
+    MSG_DEBUG(msg_module, " > [template_record_processor] New template ID: %u", template_id);
+
+    if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
+        if (tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
+            MSG_ERROR(msg_module, "[%u] Failed to add template to template manager (template ID: %u)", proc->key->odid, proc->key->tid);
+        }
+    } else {
+        if (tm_update_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
+            MSG_ERROR(msg_module, "[%u] Failed to update template in template manager (template ID: %u)", proc->key->odid, proc->key->tid);
+        }
+    }
+
+    /* Add new record to message */
+    memcpy(proc->msg + proc->offset, new_rec, rec_len);
+    proc->offset += rec_len;
+    proc->length += rec_len;
+
+    /* Adjust hashmap key */
+    templ_stats_key->template_id = template_id;
+
+    /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
+    struct templ_stats_elem_t *templ_stats_new;
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats_new);
+    if (!templ_stats_new) {
+        templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
+        if (!templ_stats_new) {
+            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            free(new_rec);
+            return;
+        }
+
+        templ_stats->start_time_field_id = flowStartMilliseconds;
+        templ_stats->end_time_field_id = flowEndMilliseconds;
+        templ_stats->od_id = proc->odid;
+        templ_stats->ip_id = proc->plugin_conf->ip_id;
+        templ_stats->template_id = template_id;
+
+        HASH_ADD(hh, proc->plugin_conf->templ_stats, od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
+    }
+
+    free(new_rec);
+    free(templ_stats_key);
 }
 
 /**
