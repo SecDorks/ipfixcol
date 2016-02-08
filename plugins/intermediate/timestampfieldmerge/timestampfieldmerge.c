@@ -12,7 +12,7 @@
  *  - e0id21 (flowEndSysUpTime)
  *  - e0id22 (flowStartSysUpTime)
  *
- * Copyright (c) 2015 Secdorks.net
+ * Copyright (c) 2016 Secdorks.net
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,22 +69,14 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
     (void) rec_len;
 
     /* Prepare hashmap lookup key */
-    struct templ_stats_key_t *templ_stats_key = calloc(1, proc->plugin_conf->templ_stats_key_len);
-    if (!templ_stats_key) {
-        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-        return;
-    }
-
     uint16_t template_id = ntohs(record->template_id);
-
-    /* Set key values */
-    templ_stats_key->od_id = proc->odid;
-    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
-    templ_stats_key->template_id = template_id;
+    proc->templ_stats_key->od_id = proc->odid;
+    proc->templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    proc->templ_stats_key->template_id = template_id;
 
     /* Retrieve statistics from hashmap */
     struct templ_stats_elem_t *templ_stats;
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &proc->templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
     if (templ_stats == NULL) { /* Do only if it was not done (successfully) before */
         templ_stats = calloc(1, sizeof(struct templ_stats_elem_t));
         if (!templ_stats) {
@@ -94,6 +86,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 
         templ_stats->start_time_field_id = 0;
         templ_stats->end_time_field_id = 0;
+        templ_stats->sysuptime_field_id = 0;
         templ_stats->od_id = proc->odid;
         templ_stats->ip_id = proc->plugin_conf->ip_id;
         templ_stats->template_id = template_id;
@@ -102,31 +95,41 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         HASH_ADD(hh, proc->plugin_conf->templ_stats, od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
     }
 
-    free(templ_stats_key);
+    struct ipfix_entity field;
 
     /* Check for flowStartMilliseconds, e0id152 */
-    if (template_record_get_field(record, 0, flowStartMilliseconds, NULL) != NULL) {
-        templ_stats->start_time_field_id = flowStartMilliseconds;
+    field = (struct ipfix_entity) flowStartMilliseconds;
+    if (template_record_get_field(record, field.pen, field.element_id, NULL) != NULL) {
+        templ_stats->start_time_field_id = field.element_id;
     }
 
     /* Check for flowEndMilliseconds, e0id153 */
-    if (template_record_get_field(record, 0, flowEndMilliseconds, NULL) != NULL) {
-        templ_stats->end_time_field_id = flowEndMilliseconds;
+    field = (struct ipfix_entity) flowEndMilliseconds;
+    if (template_record_get_field(record, field.pen, field.element_id, NULL) != NULL) {
+        templ_stats->end_time_field_id = field.element_id;
     }
 
-    /* Stop processing if target fields are already present in template record */
+    /* Stop further processing if target fields are already found in template record */
     if (templ_stats->start_time_field_id != 0 && templ_stats->end_time_field_id != 0) {
         return;
     }
 
     /* Check for flowStartSysUpTime, e0id22 */
-    if (template_record_get_field(record, 0, flowStartSysUpTime, NULL) != NULL) {
-        templ_stats->start_time_field_id = flowStartSysUpTime;
+    field = (struct ipfix_entity) flowStartSysUpTime;
+    if (template_record_get_field(record, field.pen, field.element_id, NULL) != NULL) {
+        templ_stats->start_time_field_id = field.element_id;
     }
 
     /* Check for flowEndSysUpTime, e0id21 */
-    if (template_record_get_field(record, 0, flowEndSysUpTime, NULL) != NULL) {
-        templ_stats->end_time_field_id = flowEndSysUpTime;
+    field = (struct ipfix_entity) flowEndSysUpTime;
+    if (template_record_get_field(record, field.pen, field.element_id, NULL) != NULL) {
+        templ_stats->end_time_field_id = field.element_id;
+    }
+
+    /* Check for systemInitTimeMilliseconds, e0id160 */
+    field = (struct ipfix_entity) systemInitTimeMilliseconds;
+    if (template_record_get_field(record, field.pen, field.element_id, NULL) != NULL) {
+        templ_stats->end_time_field_id = field.element_id;
     }
 }
 
@@ -137,7 +140,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
  * \param[in] rec_len Template record length
  * \param[in] data Any-type data structure (here: processor)
  */
-void template_record_processor(uint8_t *rec, int rec_len, void *data)
+void template_rec_processor(uint8_t *rec, int rec_len, void *data)
 {
     struct processor *proc = (struct processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
@@ -152,24 +155,17 @@ void template_record_processor(uint8_t *rec, int rec_len, void *data)
         return;
     }
 
-    /* Get structure from hashmap that provides information about current template */
-    struct templ_stats_key_t *templ_stats_key = calloc(1, proc->plugin_conf->templ_stats_key_len);
-    if (!templ_stats_key) {
-        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-        return;
-    }
-
     uint16_t template_id = ntohs(old_rec->template_id);
-    MSG_DEBUG(msg_module, " > [template_record_processor] Old template ID: %u", template_id);
+    MSG_DEBUG(msg_module, " > [template_rec_processor] Old template ID: %u", template_id);
 
     /* Set key values */
-    templ_stats_key->od_id = proc->odid;
-    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
-    templ_stats_key->template_id = template_id;
+    proc->templ_stats_key->od_id = proc->odid;
+    proc->templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    proc->templ_stats_key->template_id = template_id;
 
     /* Retrieve statistics from hashmap */
     struct templ_stats_elem_t *templ_stats;
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &proc->templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
     if (templ_stats == NULL) {
         MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
 
@@ -181,9 +177,9 @@ void template_record_processor(uint8_t *rec, int rec_len, void *data)
     }
 
     /* Skip further processing if template does not feature any of the timestamp fields
-     * that require processing.
-     */
-    if (templ_stats->start_time_field_id != flowStartSysUpTime && templ_stats->end_time_field_id == flowEndSysUpTime) {
+     * that require processing */
+    if (templ_stats->start_time_field_id != proc->plugin_conf->field_flowStartSysUpTime.element_id
+            && templ_stats->end_time_field_id != proc->plugin_conf->field_flowEndSysUpTime.element_id) {
         /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
@@ -192,8 +188,7 @@ void template_record_processor(uint8_t *rec, int rec_len, void *data)
     }
 
     /* Copy original template record; BYTES_4 is because target timestamps are
-     * 8 bytes in size instead of 4 bytes
-     */
+     * 8 bytes in size instead of 4 bytes */
     new_rec = calloc(1, rec_len + (2 * BYTES_4));
     if (!new_rec) {
         MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
@@ -208,10 +203,12 @@ void template_record_processor(uint8_t *rec, int rec_len, void *data)
     while (count < ntohs(new_rec->count)
             && (uint8_t *) &new_rec->fields[index] - (uint8_t *) new_rec < rec_len) {
         field_id = ntohs(new_rec->fields[index].ie.id);
-        if (field_id == flowStartSysUpTime) {
-            new_rec->fields[index].ie.id = htons(flowStartMilliseconds);
-        } else if (field_id == flowEndSysUpTime) {
-            new_rec->fields[index].ie.id = htons(flowEndMilliseconds);
+        if (field_id == proc->plugin_conf->field_flowStartSysUpTime.element_id) {
+            new_rec->fields[index].ie.id = htons((struct ipfix_entity) flowStartMilliseconds.element_id);
+            new_rec->fields[index].ie.length = htons(BYTES_8);
+        } else if (field_id == proc->plugin_conf->field_flowEndSysUpTime.element_id) {
+            new_rec->fields[index].ie.id = htons((struct ipfix_entity) flowEndMilliseconds.element_id);
+            new_rec->fields[index].ie.length = htons(BYTES_8);
         }
 
         /* PEN comes just after the IE, before the next IE; skip it */
@@ -225,7 +222,7 @@ void template_record_processor(uint8_t *rec, int rec_len, void *data)
 
     /* Store it in template manager */
     proc->key->tid = template_id;
-    MSG_DEBUG(msg_module, " > [template_record_processor] New template ID: %u", template_id);
+    MSG_DEBUG(msg_module, " > [template_rec_processor] New template ID: %u", template_id);
 
     if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
         if (tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
@@ -242,31 +239,7 @@ void template_record_processor(uint8_t *rec, int rec_len, void *data)
     proc->offset += rec_len;
     proc->length += rec_len;
 
-    /* Adjust hashmap key */
-    templ_stats_key->template_id = template_id;
-
-    /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
-    struct templ_stats_elem_t *templ_stats_new;
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats_new);
-    if (!templ_stats_new) {
-        templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
-        if (!templ_stats_new) {
-            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-            free(new_rec);
-            return;
-        }
-
-        templ_stats->start_time_field_id = flowStartMilliseconds;
-        templ_stats->end_time_field_id = flowEndMilliseconds;
-        templ_stats->od_id = proc->odid;
-        templ_stats->ip_id = proc->plugin_conf->ip_id;
-        templ_stats->template_id = template_id;
-
-        HASH_ADD(hh, proc->plugin_conf->templ_stats, od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
-    }
-
     free(new_rec);
-    free(templ_stats_key);
 }
 
 /**
@@ -276,9 +249,132 @@ void template_record_processor(uint8_t *rec, int rec_len, void *data)
  * \param[in] rec_len Data record length
  * \param[in] data Any-type data structure (here: processor)
  */
-void data_record_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
+void data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ, void *data)
 {
+    struct processor *proc = (struct processor *) data;
+    (void) templ;
 
+    /* Check whether we will exceed the allocated memory boundary */
+    if (proc->offset + rec_len > proc->allocated_msg_len) {
+        MSG_ERROR(msg_module, "Not enough memory allocated for processing full message (allocated: %u, current offset: %u)",
+                proc->allocated_msg_len, proc->offset);
+        return;
+    }
+
+    /* Get structure from hashmap that provides information about current template */
+    uint16_t template_id = ntohs(templ->template_id);
+    MSG_DEBUG(msg_module, " > [data_rec_processor] Template ID: %u", template_id);
+
+    /* Set key values */
+    proc->templ_stats_key->od_id = proc->odid;
+    proc->templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    proc->templ_stats_key->template_id = template_id;
+
+    /* Retrieve statistics from hashmap */
+    struct templ_stats_elem_t *templ_stats;
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &proc->templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
+    if (templ_stats == NULL) {
+        MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
+
+        /* Copy existing record to new message */
+        memcpy(proc->msg + proc->offset, rec, rec_len);
+        proc->offset += rec_len;
+        proc->length += rec_len;
+        return;
+    }
+
+    /* Skip further processing if template does not feature any of the timestamp fields
+     * that require processing.
+     */
+    if (templ_stats->start_time_field_id != proc->plugin_conf->field_flowStartSysUpTime.element_id
+            && templ_stats->end_time_field_id != proc->plugin_conf->field_flowEndSysUpTime.element_id) {
+        /* Copy original data record */
+        memcpy(proc->msg + proc->offset, rec, rec_len);
+        proc->offset += rec_len;
+        proc->length += rec_len;
+    }
+
+    /* Calculate absolute flow record start and end times based on sysUpTime */
+    int field_len, field_offset;
+    uint64_t *sysUpTime;
+    uint32_t *rel_start_time;
+    uint64_t abs_start_time;
+    if (templ_stats->start_time_field_id == proc->plugin_conf->field_flowStartSysUpTime.element_id) {
+        /* Retrieve sysUpTime; either from data field or approximated by collector system time */
+        if (templ_stats->sysuptime_field_id == proc->plugin_conf->field_flowStartSysUpTime.element_id) {
+            field_offset = data_record_field_offset(rec, proc->orig_templ,
+                    proc->plugin_conf->field_systemInitTimeMilliseconds.pen,
+                    proc->plugin_conf->field_systemInitTimeMilliseconds.element_id,
+                    &field_len);
+            message_get_data((uint8_t **) &sysUpTime, rec + field_offset, field_len);
+
+            /* Retrieve relative flow record start time */
+            field_offset = data_record_field_offset(rec, proc->orig_templ,
+                    proc->plugin_conf->field_flowStartSysUpTime.pen,
+                    proc->plugin_conf->field_flowStartSysUpTime.element_id,
+                    &field_len);
+            message_get_data((uint8_t **) &rel_start_time, rec + field_offset, field_len);
+
+            /* Calculate absolute flow record start time */
+            abs_start_time = *sysUpTime + *rel_start_time;
+        } else {
+            /* proc->time is seconds since UNIX epoch, so converted to milliseconds */
+            abs_start_time = proc->time * 1000;
+        }
+
+        /* Store absolute flow record start time in record */
+        message_set_data(rec + field_offset, (uint8_t *) &abs_start_time, BYTES_8);
+
+        rec_len += BYTES_4;
+
+        if (rel_start_time) {
+            free(rel_start_time);
+        }
+    }
+
+    uint32_t *rel_end_time;
+    uint64_t abs_end_time;
+    if (templ_stats->end_time_field_id == proc->plugin_conf->field_flowEndSysUpTime.element_id) {
+        /* Retrieve sysUpTime; either from data field or approximated by collector system time */
+        if (templ_stats->sysuptime_field_id == proc->plugin_conf->field_flowEndSysUpTime.element_id) {
+            field_offset = data_record_field_offset(rec, proc->orig_templ,
+                    proc->plugin_conf->field_systemInitTimeMilliseconds.pen,
+                    proc->plugin_conf->field_systemInitTimeMilliseconds.element_id,
+                    &field_len);
+            message_get_data((uint8_t **) &sysUpTime, rec + field_offset, field_len);
+
+            /* Retrieve relative flow record end time */
+            field_offset = data_record_field_offset(rec, proc->orig_templ,
+                    proc->plugin_conf->field_flowEndSysUpTime.pen,
+                    proc->plugin_conf->field_flowEndSysUpTime.element_id,
+                    &field_len);
+            message_get_data((uint8_t **) &rel_end_time, rec + field_offset, field_len);
+
+            /* Calculate absolute flow record end time */
+            abs_end_time = *sysUpTime + *rel_end_time;
+        } else {
+            /* proc->time is seconds since UNIX epoch, so converted to milliseconds */
+            abs_end_time = proc->time * 1000;
+        }
+
+        /* Store absolute flow record end time in record */
+        message_set_data(rec + field_offset, (uint8_t *) &abs_end_time, BYTES_8);
+
+        rec_len += BYTES_4;
+
+        if (rel_end_time) {
+            free(rel_end_time);
+        }
+    }
+
+    /* Add new record to message */
+    memcpy(proc->msg + proc->offset, rec, rec_len);
+    proc->offset += rec_len;
+    proc->length += rec_len;
+
+    if (sysUpTime) {
+        free(sysUpTime);
+    }
 }
 
 /**
@@ -311,6 +407,11 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
     conf->templ_stats_key_len = offsetof(struct templ_stats_elem_t, template_id)
             + sizeof(uint16_t) /* Last key component, ip_id, is if type 'uint32_t' */
             - offsetof(struct templ_stats_elem_t, od_id);
+
+    /* Initialize field instances */
+    conf->field_flowStartSysUpTime = (struct ipfix_entity) flowStartSysUpTime;
+    conf->field_flowEndSysUpTime = (struct ipfix_entity) flowEndSysUpTime;
+    conf->field_systemInitTimeMilliseconds = (struct ipfix_entity) systemInitTimeMilliseconds;
 
     *config = conf;
 
@@ -403,6 +504,15 @@ int intermediate_process_message(void *config, void *message)
     proc.odid = msg->input_info->odid;
     proc.key = tm_key_create(info->odid, conf->ip_id, 0); /* Template ID (0) will be overwritten in a later stage */
     proc.plugin_conf = config;
+    proc.time = time(NULL);
+
+    proc.templ_stats_key = calloc(1, proc.plugin_conf->templ_stats_key_len);
+    if (!proc.templ_stats_key) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        free(proc.msg);
+        free(new_msg);
+        return 1;
+    }
 
     /* Process template sets */
     MSG_DEBUG(msg_module, "[%u] Processing template sets...", msg->input_info->odid);
@@ -421,9 +531,9 @@ int intermediate_process_message(void *config, void *message)
         proc.length = 4;
 
         /* Process all template set records */
-        template_set_process_records(msg->templ_set[i], proc.type, &template_record_processor, (void *) &proc);
+        template_set_process_records(msg->templ_set[i], proc.type, &template_rec_processor, (void *) &proc);
 
-        /* Check whether a new template set was added by 'template_record_processor' */
+        /* Check whether a new template set was added by 'template_rec_processor' */
         if (proc.offset == prev_offset + 4) { /* No new template set record was added */
             proc.offset = prev_offset;
         } else { /* New template set was added; add it to data structure as well */
@@ -448,7 +558,7 @@ int intermediate_process_message(void *config, void *message)
         proc.offset += set_len;
         proc.length = set_len;
 
-        /* Check whether a new options template set was added by 'other_template_rec_processor' */
+        /* Check whether a new options template set was added by 'template_rec_processor' */
         if (proc.offset == prev_offset + 4) {
             proc.offset = prev_offset;
         } else { /* New options template set was added; add it to data structure as well */
@@ -473,6 +583,12 @@ int intermediate_process_message(void *config, void *message)
             continue;
         }
 
+        /* Save reference to original template. This is necessary for decoding data records
+         * when the accompanying template record has already been modified.
+         */
+        proc.orig_templ = templ;
+
+        /* Retrieve update template based on (new) template ID */
         proc.key->tid = templ->template_id;
         new_templ = tm_get_template(conf->tm, proc.key);
         if (!new_templ) {
@@ -496,7 +612,7 @@ int intermediate_process_message(void *config, void *message)
         tm_template_reference_inc(new_templ);
 
         /* Process template set records; select processor based on PEN */
-        data_set_process_records(msg->data_couple[i].data_set, new_templ, &data_record_processor, (void *) &proc);
+        data_set_process_records(msg->data_couple[i].data_set, new_templ, &data_rec_processor, (void *) &proc);
 
         new_msg->data_couple[new_i].data_set->header.length = htons(proc.length);
         new_msg->data_couple[new_i].data_set->header.flowset_id = htons(new_msg->data_couple[new_i].data_template->template_id);
@@ -534,6 +650,7 @@ int intermediate_process_message(void *config, void *message)
     msg->metadata = NULL;
 
     free(proc.key);
+    free(proc.templ_stats_key);
 
     drop_message(conf->ip_config, message);
     pass_message(conf->ip_config, (void *) new_msg);

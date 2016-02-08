@@ -12,7 +12,7 @@
  *  - e0id21 (flowEndSysUpTime)
  *  - e0id22 (flowStartSysUpTime)
  *
- * Copyright (c) 2015 Secdorks.net
+ * Copyright (c) 2016 Secdorks.net
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,25 +49,35 @@
 #define TIMESTAMPFIELDMERGE_H_
 
 #include <ipfixcol.h>
+#include <time.h>
 
 #include "uthash.h"
 
 /* Identifier for MSG_* macros */
 #define msg_module "timestampfieldmerge"
 
-#define BYTES_4         4
-#define TEMPL_MAX_LEN   100000
+struct ipfix_entity {
+    uint32_t pen;
+    uint16_t element_id;
+    uint16_t length;
+};
 
-#define flowStartSysUpTime 22
-#define flowEndSysUpTime 21
+#define BYTES_4                     4
+#define BYTES_8                     8
+#define TEMPL_MAX_LEN               100000
 
-#define flowStartMilliseconds 152
-#define flowEndMilliseconds 153
+#define flowStartSysUpTime          { 0,  22, 4 }
+#define flowEndSysUpTime            { 0,  21, 4 }
+#define systemInitTimeMilliseconds  { 0, 160, 8 }
+
+#define flowStartMilliseconds       { 0, 152, 8 }
+#define flowEndMilliseconds         { 0, 153, 8 }
 
 struct templ_stats_elem_t {
     UT_hash_handle hh;                  /* Hash handle for internal hash functioning */
     uint16_t start_time_field_id;       /* Field ID of start time field that must be converted */
     uint16_t end_time_field_id;         /* Field ID of end time field that must be converted */
+    uint16_t sysuptime_field_id;        /* Field ID of system uptime field that should be used in conversion */
     uint32_t od_id;                     /* Hash key - component 1 */
     uint32_t ip_id;                     /* Hash key - component 2 */
     uint16_t template_id;               /* Hash key - component 3 */
@@ -92,6 +102,11 @@ struct plugin_config {
      */
     uint16_t templ_stats_key_len;
     struct templ_stats_elem_t *templ_stats;
+
+    /* Field instances */
+    struct ipfix_entity field_flowStartSysUpTime;
+    struct ipfix_entity field_flowEndSysUpTime;
+    struct ipfix_entity field_systemInitTimeMilliseconds;
 };
 
 struct processor {
@@ -99,9 +114,12 @@ struct processor {
     uint8_t *msg;
     uint16_t allocated_msg_len, offset;
     uint32_t length, odid;
+    time_t time;
     
-    struct plugin_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
-    struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */
+    struct plugin_config *plugin_conf;          /* Pointer to plugin_config, such that we don't have to store some pointers twice */
+    struct ipfix_template_key *key;             /* Stores the key of a newly added template within the template manager */
+    struct ipfix_template *orig_templ;          /* Pointer to original template */
+    struct templ_stats_key_t *templ_stats_key;  /* Pointer to templ_stats key */
 };
 
 #endif /* TIMESTAMPFIELDMERGE_H_ */
