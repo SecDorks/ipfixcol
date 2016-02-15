@@ -106,6 +106,8 @@ struct plugin_config {
     /* Field instances */
     struct ipfix_entity field_flowStartSysUpTime;
     struct ipfix_entity field_flowEndSysUpTime;
+    struct ipfix_entity field_flowStartMilliseconds;
+    struct ipfix_entity field_flowEndMilliseconds;
     struct ipfix_entity field_systemInitTimeMilliseconds;
 };
 
@@ -114,7 +116,7 @@ struct processor {
     uint8_t *msg;
     uint16_t allocated_msg_len, offset;
     uint32_t length, odid;
-    time_t time;
+    uint64_t time;
     
     struct plugin_config *plugin_conf;          /* Pointer to plugin_config, such that we don't have to store some pointers twice */
     struct ipfix_template_key *key;             /* Stores the key of a newly added template within the template manager */

@@ -62,7 +62,7 @@ IPFIXCOL_API_VERSION;
  * \param[in] rec_len Template record length
  * \param[in] data Any-type data structure (here: httpfieldmerge_processor)
  */
-void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
+void template_rec_stat_processor(uint8_t *rec, int rec_len, void *data)
 {
     struct processor *proc = (struct processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
@@ -73,6 +73,8 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
     proc->templ_stats_key->od_id = proc->odid;
     proc->templ_stats_key->ip_id = proc->plugin_conf->ip_id;
     proc->templ_stats_key->template_id = template_id;
+
+    MSG_DEBUG(msg_module, " > [template_rec_stat_processor] Template ID: %u", template_id);
 
     /* Retrieve statistics from hashmap */
     struct templ_stats_elem_t *templ_stats;
@@ -262,7 +264,7 @@ void data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ,
     }
 
     /* Get structure from hashmap that provides information about current template */
-    uint16_t template_id = ntohs(templ->template_id);
+    uint16_t template_id = templ->template_id;
     MSG_DEBUG(msg_module, " > [data_rec_processor] Template ID: %u", template_id);
 
     /* Set key values */
@@ -284,15 +286,20 @@ void data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ,
     }
 
     /* Skip further processing if template does not feature any of the timestamp fields
-     * that require processing.
-     */
+     * that require processing */
     if (templ_stats->start_time_field_id != proc->plugin_conf->field_flowStartSysUpTime.element_id
             && templ_stats->end_time_field_id != proc->plugin_conf->field_flowEndSysUpTime.element_id) {
         /* Copy original data record */
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
+        return;
     }
+
+    /* FIXME Take care of the following situations:
+     *    - End time field comes before start time field
+     *    - Start time and end time fields are not adjacent
+     */
 
     /* Calculate absolute flow record start and end times based on sysUpTime */
     int field_len, field_offset;
@@ -302,6 +309,7 @@ void data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ,
     if (templ_stats->start_time_field_id == proc->plugin_conf->field_flowStartSysUpTime.element_id) {
         /* Retrieve sysUpTime; either from data field or approximated by collector system time */
         if (templ_stats->sysuptime_field_id == proc->plugin_conf->field_flowStartSysUpTime.element_id) {
+            MSG_DEBUG(msg_module, " > [data_rec_processor] Determining absolute start time based on sysUpTime");
             field_offset = data_record_field_offset(rec, proc->orig_templ,
                     proc->plugin_conf->field_systemInitTimeMilliseconds.pen,
                     proc->plugin_conf->field_systemInitTimeMilliseconds.element_id,
@@ -317,19 +325,36 @@ void data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ,
 
             /* Calculate absolute flow record start time */
             abs_start_time = *sysUpTime + *rel_start_time;
+
+            free(sysUpTime);
+            free(rel_start_time);
         } else {
             /* proc->time is seconds since UNIX epoch, so converted to milliseconds */
-            abs_start_time = proc->time * 1000;
+            abs_start_time = proc->time; // * 1000; FIXME
+
+            field_offset = data_record_field_offset(rec, proc->orig_templ,
+                    proc->plugin_conf->field_flowStartSysUpTime.pen,
+                    proc->plugin_conf->field_flowStartSysUpTime.element_id,
+                    &field_len);
         }
 
-        /* Store absolute flow record start time in record */
-        message_set_data(rec + field_offset, (uint8_t *) &abs_start_time, BYTES_8);
+        /* Copy record up to 'field_offset' to new message */
+        MSG_DEBUG(msg_module, " # Msg offset: %u, field offset: %u, allocated: %u", proc->offset, field_offset, proc->allocated_msg_len);
+        memcpy(proc->msg + proc->offset, rec, field_offset);
+        proc->offset += field_offset;
+        proc->length += field_offset;
 
-        rec_len += BYTES_4;
+        /* Store absolute flow record start time in record, in place of flowStartSysUpTime */
+        MSG_DEBUG(msg_module, " > [data_rec_processor] Setting absolute start time: %u (proc->time: %u)", abs_start_time, proc->time);
+        message_set_data(proc->msg + proc->offset, (uint8_t *) &abs_start_time,
+                proc->plugin_conf->field_flowStartMilliseconds.length);
 
-        if (rel_start_time) {
-            free(rel_start_time);
-        }
+        proc->offset += proc->plugin_conf->field_flowStartMilliseconds.length;
+        proc->length += proc->plugin_conf->field_flowStartMilliseconds.length;
+
+        /* Add difference between 'new' and 'old' field lengths, in bytes */
+        rec_len += proc->plugin_conf->field_flowStartMilliseconds.length
+                - proc->plugin_conf->field_flowStartSysUpTime.length;
     }
 
     uint32_t *rel_end_time;
@@ -352,29 +377,45 @@ void data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *templ,
 
             /* Calculate absolute flow record end time */
             abs_end_time = *sysUpTime + *rel_end_time;
+
+            free(sysUpTime);
+            free(rel_end_time);
         } else {
             /* proc->time is seconds since UNIX epoch, so converted to milliseconds */
-            abs_end_time = proc->time * 1000;
+            abs_end_time = proc->time; // * 1000; FIXME
+
+            field_offset = data_record_field_offset(rec, proc->orig_templ,
+                    proc->plugin_conf->field_flowStartSysUpTime.pen,
+                    proc->plugin_conf->field_flowStartSysUpTime.element_id,
+                    &field_len);
         }
 
-        /* Store absolute flow record end time in record */
-        message_set_data(rec + field_offset, (uint8_t *) &abs_end_time, BYTES_8);
+        /* Store absolute flow record end time in record, in place of flowEndSysUpTime */
+        message_set_data(proc->msg + proc->offset, (uint8_t *) &abs_end_time,
+                proc->plugin_conf->field_flowEndMilliseconds.length);
 
-        rec_len += BYTES_4;
+        proc->offset += proc->plugin_conf->field_flowEndMilliseconds.length;
+        proc->length += proc->plugin_conf->field_flowEndMilliseconds.length;
 
-        if (rel_end_time) {
-            free(rel_end_time);
-        }
+        /* Add difference between 'new' and 'old' field lengths, in bytes */
+        rec_len += proc->plugin_conf->field_flowEndMilliseconds.length
+                - proc->plugin_conf->field_flowEndSysUpTime.length;
+
+        /* Copy remainder of record to new message */
+        uint8_t msg_remainder_len = rec_len
+                - field_offset
+                - proc->plugin_conf->field_flowEndSysUpTime.length;
+        memcpy(proc->msg + proc->offset,
+                rec + field_offset + proc->plugin_conf->field_flowEndSysUpTime.length,
+                msg_remainder_len);
+        proc->offset += msg_remainder_len;
+        proc->length += msg_remainder_len;
     }
 
     /* Add new record to message */
-    memcpy(proc->msg + proc->offset, rec, rec_len);
-    proc->offset += rec_len;
-    proc->length += rec_len;
-
-    if (sysUpTime) {
-        free(sysUpTime);
-    }
+    // memcpy(proc->msg + proc->offset, rec, rec_len);
+    // proc->offset += rec_len;
+    // proc->length += rec_len;
 }
 
 /**
@@ -411,6 +452,8 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
     /* Initialize field instances */
     conf->field_flowStartSysUpTime = (struct ipfix_entity) flowStartSysUpTime;
     conf->field_flowEndSysUpTime = (struct ipfix_entity) flowEndSysUpTime;
+    conf->field_flowStartMilliseconds = (struct ipfix_entity) flowStartMilliseconds;
+    conf->field_flowEndMilliseconds = (struct ipfix_entity) flowEndMilliseconds;
     conf->field_systemInitTimeMilliseconds = (struct ipfix_entity) systemInitTimeMilliseconds;
 
     *config = conf;
@@ -478,8 +521,12 @@ int intermediate_process_message(void *config, void *message)
         return 0;
     }
 
+    /* As an estimate for the new message size, we take the old message size and
+     * allocated an additional 4 bytes for every record, assuming that we have to
+     * 'upgrade' sysUpTimes (4 bytes) to flow*Milliseconds (8 bytes) */
+    uint16_t new_msg_length = old_msg_length; // + (msg->data_records_count * BYTES_4); FIXME
+
     /* Allocate memory for new message */
-    uint16_t new_msg_length = old_msg_length;
     proc.allocated_msg_len = new_msg_length;
     proc.msg = calloc(1, new_msg_length);
     if (!proc.msg) {
@@ -523,7 +570,7 @@ int intermediate_process_message(void *config, void *message)
         /* Determine IP versions used within each template set and store result in hashmap. Also,
          * determine exporter PEN based on presence of certain enterprise-specific IEs.
          */
-        template_set_process_records(msg->templ_set[i], proc.type, &templates_stat_processor, (void *) &proc);
+        template_set_process_records(msg->templ_set[i], proc.type, &template_rec_stat_processor, (void *) &proc);
 
         /* Add template set header, and update offset and length */
         memcpy(proc.msg + proc.offset, &(msg->templ_set[i]->header), 4);
