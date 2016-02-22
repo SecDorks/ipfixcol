@@ -70,6 +70,8 @@
 /* Identifier for MSG_* macros */
 #define msg_module "httpfieldmerge"
 
+#define BYTES_1                 1
+#define BYTES_2                 2
 #define NFV9_CONVERSION_PEN     0xFFFFFFFF
 #define TEMPL_MAX_LEN           100000
 
