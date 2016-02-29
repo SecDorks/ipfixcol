@@ -276,22 +276,22 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
              * length is stored at 'field_offset - 2'
              */
             new_field_len = htons(new_field_len);
-            memcpy(rec + field_offset - 2, &new_field_len, BYTES_2);
+            memcpy(rec + field_offset - BYTES_2, &new_field_len, BYTES_2);
         } else if (new_field_len < 255 && field_len >= 255) {
             /* The second and third byte of the field must be removed, since the (new) field
              * length is < 255 and can therefore be stored in the first byte
              */
-            memmove(rec + field_offset - 2, rec + field_offset, new_field_len);
-            field_offset -= 2;
+            memmove(rec + field_offset - BYTES_2, rec + field_offset, new_field_len);
+            field_offset -= BYTES_2;
             new_field_len = htons(new_field_len);
-            memcpy(rec + field_offset - 1, &new_field_len, BYTES_1);
+            memcpy(rec + field_offset - BYTES_1, &new_field_len, BYTES_1);
         } else {
             /* Set new (variable) length in first byte of field. Note that 'field_offset'
              * contains the offset to the actual data, so the field length is stored at
              * 'field_offset - 1'
              */
             new_field_len = htons(new_field_len);
-            memcpy(rec + field_offset - 1, &new_field_len, BYTES_1);
+            memcpy(rec + field_offset - BYTES_1, &new_field_len, BYTES_1);
         }
 
         /* Update record length */

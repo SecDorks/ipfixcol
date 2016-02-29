@@ -5,16 +5,17 @@ LT_PREREQ([2.2])
 LT_INIT([dlopen])
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SUBDIRS([ base
+AC_CONFIG_SUBDIRS([
+    base
 	tools/fbitdump
 	tools/fbitconvert
 	tools/fbitmerge
 	tools/fbitexpire
 	plugins/input/ipfix_generator
 	plugins/intermediate/httpfieldmerge
-	plugins/intermediate/odip
 	plugins/intermediate/proxy
 	plugins/intermediate/timestampfieldmerge
-	plugins/storage/fastbit])
+	plugins/storage/fastbit
+])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
