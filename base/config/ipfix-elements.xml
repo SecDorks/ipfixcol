@@ -303,6 +303,34 @@
     </element>
     <element>
         <enterprise>0</enterprise>
+        <id>48</id>
+        <name>samplerId</name>
+        <dataType>unsigned8</dataType>
+        <semantic>identifier</semantic>
+    </element>
+    <element>
+        <enterprise>0</enterprise>
+        <id>49</id>
+        <name>samplerMode</name>
+        <dataType>unsigned8</dataType>
+        <semantic>identifier</semantic>
+    </element>
+    <element>
+        <enterprise>0</enterprise>
+        <id>50</id>
+        <name>samplerRandomInterval</name>
+        <dataType>unsigned32</dataType>
+        <semantic>quantity</semantic>
+    </element>
+    <element>
+        <enterprise>0</enterprise>
+        <id>51</id>
+        <name>classId</name>
+        <dataType>unsigned8</dataType>
+        <semantic>identifier</semantic>
+    </element>
+    <element>
+        <enterprise>0</enterprise>
         <id>52</id>
         <name>minimumTTL</name>
         <dataType>unsigned8</dataType>
