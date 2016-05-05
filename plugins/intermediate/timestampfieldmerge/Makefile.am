@@ -5,7 +5,9 @@ ipfixconf = $(DESTDIR)/$(exec_prefix)/bin/ipfixconf
 pluginsdir = $(datadir)/ipfixcol/plugins
 sofile = $(pluginsdir)/ipfixcol-timestampfieldmerge-inter.so
 
-AM_CPPFLAGS = -I$(top_srcdir)/headers
+GIT_REV := $(shell git rev-parse HEAD)
+
+AM_CPPFLAGS = -I$(top_srcdir)/headers -DGIT_REV=\"$(GIT_REV)\"
 
 plugins_LTLIBRARIES = ipfixcol-timestampfieldmerge-inter.la
 ipfixcol_timestampfieldmerge_inter_la_LDFLAGS = -module -avoid-version -shared

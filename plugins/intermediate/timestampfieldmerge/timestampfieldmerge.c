@@ -435,6 +435,7 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 
     *config = conf;
 
+    MSG_DEBUG(msg_module, "Plugin revision: %s", GIT_REV);
     MSG_INFO(msg_module, "Plugin initialization completed successfully");
 
     /* Plugin successfully initialized */
