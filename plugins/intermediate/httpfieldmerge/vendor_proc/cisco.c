@@ -290,7 +290,6 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
              * contains the offset to the actual data, so the field length is stored at
              * 'field_offset - 1'
              */
-            new_field_len = htons(new_field_len);
             memcpy(rec + field_offset - BYTES_1, &new_field_len, BYTES_1);
         }
 
