@@ -81,26 +81,41 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 {
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *record = (struct ipfix_template_record *) rec;
+    uint16_t templ_id = ntohs(record->template_id);
     (void) rec_len;
     int i;
 
+    /* Prepare hashmap lookup key */
+    struct templ_stats_key_t *templ_stats_key = calloc(1, proc->plugin_conf->templ_stats_key_len);
+    if (!templ_stats_key) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
+    /* Set key values */
+    templ_stats_key->od_id = proc->odid;
+    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    templ_stats_key->templ_id = templ_id;
+
     /* Retrieve or create new hashmap entry */
     struct templ_stats_elem_t *templ_stats;
-    uint16_t template_id = ntohs(record->template_id);
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
-    if (templ_stats == NULL) { /* Do only if it was not done (successfully) before */
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
+    if (templ_stats == NULL) { /* No hashmap entry found, so create new entry */
         templ_stats = calloc(1, sizeof(struct templ_stats_elem_t));
         if (!templ_stats) {
             MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            free(templ_stats_key);
             return;
         }
 
-        templ_stats->id = template_id;
         templ_stats->http_fields_pen = 0;
         templ_stats->http_fields_pen_determined = 0;
+        templ_stats->od_id = proc->odid;
+        templ_stats->ip_id = proc->plugin_conf->ip_id;
+        templ_stats->templ_id = templ_id;
 
         /* Store result in hashmap */
-        HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats);
+        HASH_ADD(hh, proc->plugin_conf->templ_stats, od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
     }
 
     /* Determine exporter PEN based on presence of certain enterprise-specific IEs */
@@ -108,7 +123,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from Cisco */
         for (i = 0; i < cisco_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, cisco_fields[i].pen, cisco_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from Cisco in template (template ID: %u)", proc->odid, template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from Cisco in template (template ID: %u)", proc->odid, templ_id);
                 templ_stats->http_fields_pen = cisco_fields[i].pen;
             }
         }
@@ -116,7 +131,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from INVEA-TECH */
         for (i = 0; i < invea_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, invea_fields[i].pen, invea_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", proc->odid, template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from INVEA-TECH in template (template ID: %u)", proc->odid, templ_id);
                 templ_stats->http_fields_pen = invea_fields[i].pen;
             }
         }
@@ -124,7 +139,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from ntop */
         for (i = 0; i < ntop_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, ntop_fields[i].pen, ntop_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", proc->odid, template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from ntop in template (template ID: %u)", proc->odid, templ_id);
                 templ_stats->http_fields_pen = ntop_fields[i].pen;
             }
         }
@@ -135,7 +150,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
          */
         for (i = 0; i < ntop_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, NFV9_CONVERSION_PEN, ntopv9_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "[%u] Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", proc->odid, template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific HTTP IEs from ntop (NFv9) in template (template ID: %u)", proc->odid, templ_id);
                 templ_stats->http_fields_pen = NFV9_CONVERSION_PEN;
             }
         }
@@ -143,7 +158,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from Masaryk University */
         for (i = 0; i < masaryk_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, masaryk_fields[i].pen, masaryk_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from Masaryk University in template (template ID: %u)", proc->odid, template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from Masaryk University in template (template ID: %u)", proc->odid, templ_id);
                 templ_stats->http_fields_pen = masaryk_fields[i].pen;
             }
         }
@@ -151,13 +166,16 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         /* Check enterprise-specific IEs from RS */
         for (i = 0; i < rs_field_count && templ_stats->http_fields_pen == 0; ++i) {
             if (template_record_get_field(record, rs_fields[i].pen, rs_fields[i].element_id, NULL) != NULL) {
-                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", proc->odid, template_id);
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from RS in template (template ID: %u)", proc->odid, templ_id);
                 templ_stats->http_fields_pen = rs_fields[i].pen;
             }
         }
 
         templ_stats->http_fields_pen_determined = 1;
+        // MSG_DEBUG(msg_module, "Stored entry in templ_stats by key <%u, %u, %u>", templ_stats_key->od_id, templ_stats_key->ip_id, templ_stats_key->templ_id);
     }
+
+    free(templ_stats_key);
 
     /* Store statistics about OD, but only if it hasn't been stored before */
     if (templ_stats->http_fields_pen_determined == 1 && templ_stats->http_fields_pen != 0) {
@@ -165,6 +183,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         struct od_stats_key_t *od_stats_key = calloc(1, proc->plugin_conf->od_stats_key_len);
         if (od_stats_key == NULL) {
             MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+            free(templ_stats_key);
             return;
         }
 
@@ -221,11 +240,14 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
     conf->tm = template_mgr;
 
     /* Initialize (empty) hashmaps */
-    conf->templ_stats = NULL;
     conf->od_stats = NULL;
-    conf->od_stats_key_len = offsetof(struct od_stats_elem_t, ip_id)
-            + sizeof(uint32_t) /* Last key component, ip_id, is if type 'uint32_t' */
-            - offsetof(struct od_stats_elem_t, od_id);
+    conf->od_stats_key_len = offsetof(struct od_stats_elem_t, ip_id)          /* Offset of last key component */
+            + sizeof(uint32_t)                                                /* Last key component, ip_id, is if type 'uint32_t' */
+            - offsetof(struct od_stats_elem_t, od_id);                        /* Offset of first key component */
+    conf->templ_stats = NULL;
+    conf->templ_stats_key_len = offsetof(struct templ_stats_elem_t, templ_id) /* Offset of last key component */
+            + sizeof(uint16_t)                                                /* Last key component, ip_id, is if type 'uint16_t' */
+            - offsetof(struct templ_stats_elem_t, od_id);                     /* Offset of first key component */
 
     *config = conf;
 
@@ -261,8 +283,6 @@ int intermediate_process_message(void *config, void *message)
     msg = (struct ipfix_message *) message;
     info = (struct input_info_network *) msg->input_info;
 
-    MSG_DEBUG(msg_module, "[%u] Received IPFIX message...", msg->input_info->odid);
-
     /* Check whether source was closed */
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
         // MSG_WARNING(msg_module, "Source closed; skipping IPFIX message...");
@@ -286,6 +306,8 @@ int intermediate_process_message(void *config, void *message)
      *      2) We use '>=' in the comparison to avoid compiler warnings about the condition always being false.
      */
     uint16_t old_msg_length = ntohs(msg->pkt_header->length);
+    MSG_DEBUG(msg_module, "[%u] Received IPFIX message (sequence number: %u, length: %u)",
+            msg->input_info->odid, msg->input_info->sequence_number, old_msg_length);
     if (old_msg_length >= MSG_MAX_LENGTH) {
         MSG_WARNING(msg_module, "[%u] Length of received IPFIX message is invalid (%X); skipping IPFIX message...",
                 msg->input_info->odid, msg->pkt_header->length);
@@ -416,7 +438,7 @@ int intermediate_process_message(void *config, void *message)
             continue;
         }
 
-        MSG_DEBUG(msg_module, "[%u] > Template ID %u ", msg->input_info->odid, templ->template_id);
+        // MSG_DEBUG(msg_module, "[%u] > Template ID %u ", msg->input_info->odid, templ->template_id);
 
         proc.key->tid = templ->template_id;
         new_templ = tm_get_template(conf->tm, proc.key);

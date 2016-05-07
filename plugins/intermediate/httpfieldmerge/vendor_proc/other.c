@@ -186,6 +186,7 @@ void other_template_rec_processor(uint8_t *rec, int rec_len, void *data)
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
     struct ipfix_template_record *new_rec;
+    uint16_t templ_id = ntohs(old_rec->template_id);
     uint8_t i;
 
     /* Don't process options template records */
@@ -197,19 +198,37 @@ void other_template_rec_processor(uint8_t *rec, int rec_len, void *data)
         return;
     }
 
+    /* Prepare hashmap lookup key */
+    struct templ_stats_key_t *templ_stats_key = calloc(1, proc->plugin_conf->templ_stats_key_len);
+    if (!templ_stats_key) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
+    /* Set key values */
+    templ_stats_key->od_id = proc->odid;
+    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    templ_stats_key->templ_id = templ_id;
+
     /* Get structure from hashmap that provides information about current template */
     struct templ_stats_elem_t *templ_stats;
-    uint16_t template_id = ntohs(old_rec->template_id);
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
     if (templ_stats == NULL) {
-        MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
+        MSG_ERROR(msg_module, "Could not find key <%u, %u, %u> in hashmap; using original template",
+                templ_stats_key->od_id,
+                templ_stats_key->ip_id,
+                templ_stats_key->templ_id);
 
         /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
+
+        free(templ_stats_key);
         return;
     }
+
+    free(templ_stats_key);
 
     /*
      * Skip further processing in any of the following situations:
@@ -321,7 +340,7 @@ void other_template_rec_processor(uint8_t *rec, int rec_len, void *data)
     }
 
     /* Store it in template manager */
-    proc->key->tid = template_id;
+    proc->key->tid = templ_id;
 
     if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
         if (tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
@@ -337,23 +356,6 @@ void other_template_rec_processor(uint8_t *rec, int rec_len, void *data)
     memcpy(proc->msg + proc->offset, new_rec, rec_len);
     proc->offset += rec_len;
     proc->length += rec_len;
-
-    /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
-    struct templ_stats_elem_t *templ_stats_new;
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats_new);
-    if (!templ_stats_new) {
-        templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
-        if (!templ_stats_new) {
-            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-            free(new_rec);
-            return;
-        }
-
-        templ_stats_new->id = template_id;
-        templ_stats_new->http_fields_pen = TARGET_PEN;
-        templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
-        HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats_new);
-    }
 
     free(new_rec);
 }

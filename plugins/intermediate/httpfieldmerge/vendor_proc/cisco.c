@@ -64,6 +64,18 @@
 #include "cisco.h"
 #include "fields.h"
 
+#define CISCO_ENCODING_LEN 6
+
+// void print_mem_addr(uint8_t *p, uint16_t len)
+// {
+//     char *addr;
+//     int i;
+//     for (i = 0; i < len; ++i) {
+//         addr = (char *) (p + i);
+//         MSG_DEBUG(msg_module, " - %p: %.2x", addr, *addr);
+//     }
+// }
+
 /**
  * \brief Processing of template records and option template records
  *
@@ -76,6 +88,7 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
     struct httpfieldmerge_processor *proc = (struct httpfieldmerge_processor *) data;
     struct ipfix_template_record *old_rec = (struct ipfix_template_record *) rec;
     struct ipfix_template_record *new_rec;
+    uint16_t templ_id = ntohs(old_rec->template_id);
 
     /* Don't process options template records */
     if (proc->type == TM_OPTIONS_TEMPLATE) {
@@ -86,22 +99,39 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
         return;
     }
 
+    /* Prepare hashmap lookup key */
+    struct templ_stats_key_t *templ_stats_key = calloc(1, proc->plugin_conf->templ_stats_key_len);
+    if (!templ_stats_key) {
+        MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
+        return;
+    }
+
+    /* Set key values */
+    templ_stats_key->od_id = proc->odid;
+    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    templ_stats_key->templ_id = templ_id;
+
     /* Get structure from hashmap that provides information about current template */
     struct templ_stats_elem_t *templ_stats;
-    uint16_t template_id = ntohs(old_rec->template_id);
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats);
+    HASH_FIND(hh, proc->plugin_conf->templ_stats, &templ_stats_key->od_id, proc->plugin_conf->templ_stats_key_len, templ_stats);
     if (templ_stats == NULL) {
-        MSG_ERROR(msg_module, "Could not find key '%u' in hashmap; using original template", template_id);
+        MSG_ERROR(msg_module, "Could not find key <%u, %u, %u> in hashmap; using original template",
+                templ_stats_key->od_id,
+                templ_stats_key->ip_id,
+                templ_stats_key->templ_id);
 
         /* Copy existing record to new message */
         memcpy(proc->msg + proc->offset, old_rec, rec_len);
         proc->offset += rec_len;
         proc->length += rec_len;
+
+        free(templ_stats_key);
         return;
     }
 
-    /*
-     * Skip further processing in any of the following situations:
+    free(templ_stats_key);
+
+    /* Skip further processing in any of the following situations:
      *      - Template does not include HTTP IEs (hostname, URL)
      *      - Template already uses the unified set of HTTP IEs
      */
@@ -194,14 +224,15 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
         ++index;
     }
 
-    /* Store it in template manager */
-    proc->key->tid = template_id;
-
+    /* Store modified template in template manager */
+    proc->key->tid = templ_id;
     if (tm_get_template(proc->plugin_conf->tm, proc->key) == NULL) {
+        MSG_DEBUG(msg_module, "[%u] Adding template ID %u to template manager", proc->key->odid, templ_id);
         if (tm_add_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
             MSG_ERROR(msg_module, "[%u] Failed to add template to template manager (template ID: %u)", proc->key->odid, proc->key->tid);
         }
     } else {
+        MSG_DEBUG(msg_module, "[%u] Updating template ID %u in template manager", proc->key->odid, templ_id);
         if (tm_update_template(proc->plugin_conf->tm, (void *) new_rec, TEMPL_MAX_LEN, proc->type, proc->key) == NULL) {
             MSG_ERROR(msg_module, "[%u] Failed to update template in template manager (template ID: %u)", proc->key->odid, proc->key->tid);
         }
@@ -211,23 +242,6 @@ void cisco_template_rec_processor(uint8_t *rec, int rec_len, void *data)
     memcpy(proc->msg + proc->offset, new_rec, rec_len);
     proc->offset += rec_len;
     proc->length += rec_len;
-
-    /* Add new template (ID) to hashmap (templ_stats), with same information as 'old' template (ID) */
-    struct templ_stats_elem_t *templ_stats_new;
-    HASH_FIND(hh, proc->plugin_conf->templ_stats, &template_id, sizeof(uint16_t), templ_stats_new);
-    if (!templ_stats_new) {
-        templ_stats_new = calloc(1, sizeof(struct templ_stats_elem_t));
-        if (!templ_stats_new) {
-            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-            free(new_rec);
-            return;
-        }
-
-        templ_stats_new->id = template_id;
-        templ_stats_new->http_fields_pen = TARGET_PEN;
-        templ_stats_new->http_fields_pen_determined = templ_stats->http_fields_pen_determined;
-        HASH_ADD(hh, proc->plugin_conf->templ_stats, id, sizeof(uint16_t), templ_stats_new);
-    }
 
     free(new_rec);
 }
@@ -254,6 +268,8 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
         }
     }
 
+    // MSG_DEBUG(msg_module, "[%u]   > New data record", proc->odid);
+
     /* Strip first six bytes from Cisco HTTP fields, as they are used for some Cisco-proprietary
      * encoding and not part of the actual exported HTTP-related string
      */
@@ -262,12 +278,19 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
     uint16_t new_field_len;
     for (i = 0; i < target_field_count; ++i) {
         field_offset = data_record_field_offset(rec, templ, target_fields[i].pen, target_fields[i].element_id, &field_len);
+        if (field_offset == -1) {
+            MSG_ERROR(msg_module, "[%u] Cannot find e%uid%u in template %u",
+                    proc->odid, target_fields[i].pen, target_fields[i].element_id, ntohs(templ->template_id));
+        }
 
         /* Remove first six bytes from fields */
-        memmove(rec + field_offset, rec + field_offset + 6, rec_len - field_offset - 6);
+        // print_mem_addr(rec + field_offset, CISCO_ENCODING_LEN);
+        // MSG_DEBUG(msg_module, " - e%uid%u: offset: %d", target_fields[i].pen, target_fields[i].element_id, field_offset);
+        memmove(rec + field_offset, rec + field_offset + CISCO_ENCODING_LEN, rec_len - field_offset - CISCO_ENCODING_LEN);
 
-        /* Update field length */
-        new_field_len = field_len - 6;
+        /* Update record and field length */
+        rec_len -= CISCO_ENCODING_LEN;
+        new_field_len = field_len - CISCO_ENCODING_LEN;
 
         /* Update field length in IPFIX message */
         if (new_field_len >= 255) {
@@ -292,9 +315,6 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
              */
             memcpy(rec + field_offset - BYTES_1, &new_field_len, BYTES_1);
         }
-
-        /* Update record length */
-        rec_len -= 6;
     }
 
     /* Add new record to message */
