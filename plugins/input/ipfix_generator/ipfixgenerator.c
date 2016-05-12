@@ -6,7 +6,7 @@
  * IPFIXcol input plugin for generating semi-random IPFIX traffic. The main
  * purpose of this plugin is performance testing.
  *
- * Copyright (c) 2015 Secdorks.net
+ * Copyright (c) 2016 Secdorks.net
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

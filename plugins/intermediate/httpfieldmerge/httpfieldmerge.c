@@ -183,7 +183,6 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         struct od_stats_key_t *od_stats_key = calloc(1, proc->plugin_conf->od_stats_key_len);
         if (od_stats_key == NULL) {
             MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-            free(templ_stats_key);
             return;
         }
 
