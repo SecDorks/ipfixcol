@@ -301,9 +301,11 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
             /* The second and third byte of the field must be removed, since the (new) field
              * length is < 255 and can therefore be stored in the first byte
              */
-            memmove(rec + field_offset - BYTES_2, rec + field_offset, new_field_len);
+            memmove(rec + field_offset - BYTES_2, rec + field_offset, rec_len - field_offset);
+            rec_len -= BYTES_2;
+
+            /* Set new field length */
             field_offset -= BYTES_2;
-            new_field_len = htons(new_field_len);
             memcpy(rec + field_offset - BYTES_1, &new_field_len, BYTES_1);
         } else {
             /* Set new (variable) length in first byte of field. Note that 'field_offset'

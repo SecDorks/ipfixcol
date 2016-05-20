@@ -101,10 +101,12 @@ void ntop_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *t
     int url_field_offset = data_record_field_offset(rec, templ, TARGET_PEN, ((struct ipfix_entity) target_http_url).element_id, &url_field_len);
     uint16_t new_url_field_len = url_field_len - hostname_field_len;
 
-    // MSG_DEBUG(msg_module, " > Hostname field len (e%uid%u): %d", TARGET_PEN, ((struct ipfix_entity) target_http_hostname).element_id, hostname_field_len);
+    /* Calculate new URL field length */
+    uint16_t new_url_field_len = url_field_len - hostname_field_len;
 
     /* Determine URL field based on template */
     int url_field_templ_len = template_get_field_length(templ, TARGET_PEN, ((struct ipfix_entity) target_http_url).element_id | 0x8000);
+
     if (url_field_templ_len == VAR_IE_LENGTH) {
         /* Move URL by 'hostname_field_len' bytes, effectively removing the hostname component */
         memmove(rec + url_field_offset, rec + url_field_offset + hostname_field_len, rec_len - url_field_offset - hostname_field_len);
@@ -116,20 +118,23 @@ void ntop_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *t
              * length is stored at 'url_field_offset - 2'.
              */
             new_url_field_len = htons(new_url_field_len);
-            memcpy(rec + url_field_offset - 2, &new_url_field_len, sizeof(new_url_field_len));
+            memcpy(rec + url_field_offset - BYTES_2, &new_url_field_len, BYTES_2);
         } else if (new_url_field_len < 255 && url_field_len >= 255) {
             /* The second and third byte of the field must be removed, since the (new) field
              * length is < 255 and can therefore be stored in the first byte
              */
-            memmove(rec + url_field_offset - 2, rec + url_field_offset, new_url_field_len);
-            url_field_offset -= 2;
-            memset(rec + url_field_offset - 1, new_url_field_len, 1);
+            memmove(rec + url_field_offset - BYTES_2, rec + url_field_offset, rec_len - url_field_offset);
+            rec_len -= BYTES_2;
+
+            /* Set new field length */
+            url_field_offset -= BYTES_2;
+            memcpy(rec + url_field_offset - BYTES_1, &new_url_field_len, BYTES_1);
         } else {
             /* Set new (variable) length in first byte of field. Note that 'url_field_offset'
              * contains the offset to the actual data, so the field length is stored at
              * 'url_field_offset - 1'
              */
-            memset(rec + url_field_offset - 1, new_url_field_len, 1);
+            memcpy(rec + url_field_offset - BYTES_1, &new_url_field_len, BYTES_1);
         }
     } else if (url_field_templ_len == -1) { /* Field has fixed length specified in template */
         MSG_ERROR(msg_module, "Field e%uid%u not found in template; cannot determine field length", TARGET_PEN, ((struct ipfix_entity) target_http_url).element_id);
