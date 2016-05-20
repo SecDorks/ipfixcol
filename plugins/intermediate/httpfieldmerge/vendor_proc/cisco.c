@@ -268,8 +268,6 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
         }
     }
 
-    // MSG_DEBUG(msg_module, "[%u]   > New data record", proc->odid);
-
     /* Strip first six bytes from Cisco HTTP fields, as they are used for some Cisco-proprietary
      * encoding and not part of the actual exported HTTP-related string
      */

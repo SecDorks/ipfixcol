@@ -437,8 +437,6 @@ int intermediate_process_message(void *config, void *message)
             continue;
         }
 
-        // MSG_DEBUG(msg_module, "[%u] > Template ID %u ", msg->input_info->odid, templ->template_id);
-
         proc.key->tid = templ->template_id;
         new_templ = tm_get_template(conf->tm, proc.key);
         if (!new_templ) {
