@@ -281,10 +281,9 @@ void cisco_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *
                     proc->odid, target_fields[i].pen, target_fields[i].element_id, ntohs(templ->template_id));
         }
 
-        /* Remove first six bytes from fields */
-        // print_mem_addr(rec + field_offset, CISCO_ENCODING_LEN);
-        // MSG_DEBUG(msg_module, " - e%uid%u: offset: %d", target_fields[i].pen, target_fields[i].element_id, field_offset);
-        memmove(rec + field_offset, rec + field_offset + CISCO_ENCODING_LEN, rec_len - field_offset - CISCO_ENCODING_LEN);
+        /* Remove first `CISCO_ENCODING_LEN` bytes from fields */
+        memmove(rec + field_offset, rec + field_offset + CISCO_ENCODING_LEN,
+                rec_len - field_offset - CISCO_ENCODING_LEN);
 
         /* Update record and field length */
         rec_len -= CISCO_ENCODING_LEN;
