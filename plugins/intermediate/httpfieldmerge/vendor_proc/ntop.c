@@ -87,10 +87,11 @@ void ntop_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *t
         }
     }
 
-    /* Strip hostname from URL field */
-    int hostname_field_len = 0, url_field_len;
-    data_record_field_offset(rec, templ, TARGET_PEN, ((struct ipfix_entity) target_http_hostname).element_id, &hostname_field_len);
-    if (hostname_field_len == 0) {
+    /* Check whether current data record has to be processed at all */
+    int hostname_field_len;
+    int hostname_field_offset = data_record_field_offset(rec, templ, TARGET_PEN,
+            ((struct ipfix_entity) target_http_hostname).element_id, &hostname_field_len);
+    if (hostname_field_offset < 0 || hostname_field_len == 0) {
         /* Copy original data record */
         memcpy(proc->msg + proc->offset, rec, rec_len);
         proc->offset += rec_len;
@@ -98,8 +99,16 @@ void ntop_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *t
         return;
     }
 
-    int url_field_offset = data_record_field_offset(rec, templ, TARGET_PEN, ((struct ipfix_entity) target_http_url).element_id, &url_field_len);
-    uint16_t new_url_field_len = url_field_len - hostname_field_len;
+    int url_field_len;
+    int url_field_offset = data_record_field_offset(rec, templ, TARGET_PEN,
+            ((struct ipfix_entity) target_http_url).element_id, &url_field_len);
+    if (url_field_offset < 0) {
+        /* Copy original data record */
+        memcpy(proc->msg + proc->offset, rec, rec_len);
+        proc->offset += rec_len;
+        proc->length += rec_len;
+        return;
+    }
 
     /* Calculate new URL field length */
     uint16_t new_url_field_len = url_field_len - hostname_field_len;
