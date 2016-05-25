@@ -305,8 +305,8 @@ int intermediate_process_message(void *config, void *message)
      *      2) We use '>=' in the comparison to avoid compiler warnings about the condition always being false.
      */
     uint16_t old_msg_length = ntohs(msg->pkt_header->length);
-    MSG_DEBUG(msg_module, "[%u] Received IPFIX message (sequence number: %u, length: %u)",
-            msg->input_info->odid, msg->input_info->sequence_number, old_msg_length);
+    MSG_DEBUG(msg_module, "[%u] Received IPFIX message (sequence number: %u)",
+            msg->input_info->odid, msg->input_info->sequence_number);
     if (old_msg_length >= MSG_MAX_LENGTH) {
         MSG_WARNING(msg_module, "[%u] Length of received IPFIX message is invalid (%X); skipping IPFIX message...",
                 msg->input_info->odid, msg->pkt_header->length);
