@@ -79,12 +79,13 @@ void ntop_data_rec_processor(uint8_t *rec, int rec_len, struct ipfix_template *t
 
     /* Check whether we will exceed the allocated memory boundary */
     if (proc->offset + rec_len > proc->allocated_msg_len) {
-        proc->allocated_msg_len = proc->allocated_msg_len + 100;
-        proc->msg = realloc(proc->msg, proc->allocated_msg_len);
-        if (!proc->msg) {
-            MSG_ERROR(msg_module, "Memory allocation failed (%s:%d)", __FILE__, __LINE__);
-            return;
-        }
+        /* Something is really wrong with the IPFIX message: the nTop processor
+         * should only decrease the message size and not increase it, compared to
+         * the original IPFIX message that is received from the flow exporter
+         * (because we remove hostnames from the URL fields).
+         */
+        MSG_ERROR(msg_module, "New message is too small for data record; likely malformed IPFIX message...");
+        return;
     }
 
     /* Check whether current data record has to be processed at all */
