@@ -342,9 +342,12 @@ int intermediate_process_message(void *config, void *message)
     proc.plugin_conf = config;
 
     /* Process template sets */
-    MSG_DEBUG(msg_module, "[%u] Processing template sets...", msg->input_info->odid);
     proc.type = TM_TEMPLATE;
     for (i = 0; i < MSG_MAX_TEMPL_SETS && msg->templ_set[i]; ++i) {
+        if (i == 0) {
+            MSG_DEBUG(msg_module, "[%u] Processing template sets...", msg->input_info->odid);
+        }
+
         prev_offset = proc.offset;
 
         /* Determine IP versions used within each template set and store result in hashmap. Also,
@@ -426,8 +429,11 @@ int intermediate_process_message(void *config, void *message)
     new_msg->opt_templ_set[otsets] = NULL;
 
     /* Process data sets */
-    MSG_DEBUG(msg_module, "[%u] Processing data sets...", msg->input_info->odid);
     for (i = 0, new_i = 0; i < MSG_MAX_DATA_COUPLES && msg->data_couple[i].data_set; ++i) {
+        if (i == 0) {
+            MSG_DEBUG(msg_module, "[%u] Processing data sets...", msg->input_info->odid);
+        }
+
         templ = msg->data_couple[i].data_template;
 
         /* Skip processing in case there is no template available for this data set. This may
