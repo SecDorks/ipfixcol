@@ -38,7 +38,7 @@
 
 AC_PREREQ([2.60])
 # Process this file with autoconf to produce a configure script.
-AC_INIT([ipfixcol-nfdump-input], [0.2.0])
+AC_INIT([ipfixcol-nfdump-input], [0.2.1])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
@@ -59,11 +59,12 @@ LBR_SET_DISTRO([redhat])
 
 ############################ Check for programs ################################
 
-# Check for rpmbuil
+# Check for rpmbuild
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild)
 
 # Check for xsltproc
 LBR_CHECK_XSLTPROC
+AC_SUBST([BUILDREQS])
 
 # Check for standard programs
 AC_PROG_CXX

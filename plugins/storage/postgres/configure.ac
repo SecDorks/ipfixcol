@@ -38,7 +38,7 @@
 
 AC_PREREQ([2.60])
 # Process this file with autoconf to produce a configure script.
-AC_INIT([ipfixcol-postgres-output], [1.1.6])
+AC_INIT([ipfixcol-postgres-output], [1.1.7])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
@@ -49,6 +49,8 @@ AC_CONFIG_HEADERS([config.h])
 
 # Initialization
 CFLAGS="-Wall"
+# We need -fPIC to link to some of the libraries
+LDFLAGS="$LDFLAGS -fPIC"
 
 RELEASE=1
 AC_SUBST(RELEASE)
@@ -59,8 +61,9 @@ LBR_SET_DISTRO([redhat])
 
 ############################ Check for programs ################################
 
-# Check for rpmbuil
+# Check for rpmbuild
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild)
+AC_SUBST([BUILDREQS])
 
 # Check for xsltproc
 LBR_CHECK_XSLTPROC
