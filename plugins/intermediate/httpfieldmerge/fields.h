@@ -108,6 +108,11 @@ struct ipfix_entity {
 #define rs_http_user_agent      { RS_PEN, 22 }
 #define rs_field_count          3
 
+#define secureme2_http_hostname { SECUREME2_PEN, 1 }
+#define secureme2_http_url      { SECUREME2_PEN, 2 }
+#define secureme2_http_user_agent   { SECUREME2_PEN, 3 }
+#define secureme2_field_count   3
+
 #define target_http_hostname    { TARGET_PEN, 20 }
 #define target_http_url         { TARGET_PEN, 21 }
 #define target_http_user_agent  { TARGET_PEN, 22 }
@@ -131,6 +136,9 @@ static struct ipfix_entity ntopv9_fields[] = {
 };
 static struct ipfix_entity rs_fields[] = {
     rs_http_hostname, rs_http_url, rs_http_user_agent
+};
+static struct ipfix_entity secureme2_fields[] = {
+    secureme2_http_hostname, secureme2_http_url, secureme2_http_user_agent
 };
 static struct ipfix_entity target_fields[] = {
     target_http_hostname, target_http_url, target_http_user_agent, target_unknown

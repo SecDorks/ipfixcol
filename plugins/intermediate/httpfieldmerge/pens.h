@@ -63,11 +63,12 @@
 #ifndef HTTPFIELDMERGE_PENS_H_
 #define HTTPFIELDMERGE_PENS_H_
 
-#define CISCO_PEN   9
-#define INVEA_PEN   39499
-#define MASARYK_PEN 16982
-#define NTOP_PEN    35632
-#define RS_PEN      44913
-#define TARGET_PEN  RS_PEN
+#define CISCO_PEN       9
+#define INVEA_PEN       39499
+#define MASARYK_PEN     16982
+#define NTOP_PEN        35632
+#define RS_PEN          44913
+#define SECUREME2_PEN   48060
+#define TARGET_PEN      RS_PEN
 
 #endif /* HTTPFIELDMERGE_PENS_H_ */

@@ -95,5 +95,10 @@ static struct field_mapping rs_field_mappings[] = {
     { rs_http_url,              target_http_url },
     { rs_http_user_agent,       target_http_user_agent }
 };
+static struct field_mapping secureme2_field_mappings[] = {
+    { secureme2_http_hostname,  target_http_hostname },
+    { secureme2_http_url,       target_http_url },
+    { secureme2_http_user_agent,target_http_user_agent }
+};
 
 #endif /* HTTPFIELDMERGE_FIELD_MAPPINGS_H_ */
