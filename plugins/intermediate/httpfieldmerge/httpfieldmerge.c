@@ -174,7 +174,6 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         }
 
         templ_stats->http_fields_pen_determined = 1;
-        // MSG_DEBUG(msg_module, "Stored entry in templ_stats by key <%u, %u, %u>", templ_stats_key->od_id, templ_stats_key->ip_id, templ_stats_key->templ_id);
     }
 
     free(templ_stats_key);
