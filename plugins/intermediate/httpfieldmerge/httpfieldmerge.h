@@ -83,13 +83,13 @@ struct od_stats_elem_t {
     tset_callback_f tset_proc;      /* Processor for (option) template sets */
     dset_callback_f dset_proc;      /* Processor for data sets */
     uint32_t od_id;                 /* Hash key - component 1 */
-    uint32_t ip_id;                 /* Hash key - component 2 */
+    uint32_t exporter_ip_addr_crc;  /* Hash key - component 2 */
 };
 
 /* Structure used as key in od_stats_elem_t */
 struct od_stats_key_t {
     uint32_t od_id;
-    uint32_t ip_id;
+    uint32_t exporter_ip_addr_crc;
 };
 
 /* Hash element that contains information per template */
@@ -98,14 +98,14 @@ struct templ_stats_elem_t {
     uint32_t http_fields_pen;       /* Exporter PEN in case template contains HTTP-related fields */
     int http_fields_pen_determined; /* Indicates whether the PEN belonging HTTP-related has been determined before */
     uint32_t od_id;                 /* Hash key - component 1 */
-    uint32_t ip_id;                 /* Hash key - component 2 */
+    uint32_t exporter_ip_addr_crc;  /* Hash key - component 2 */
     uint16_t templ_id;              /* Hash key - component 3 */
 };
 
 /* Structure used as key in od_stats_elem_t */
 struct templ_stats_key_t {
     uint32_t od_id;
-    uint32_t ip_id;
+    uint32_t exporter_ip_addr_crc;
     uint16_t templ_id;
 };
 
@@ -113,7 +113,7 @@ struct templ_stats_key_t {
 struct httpfieldmerge_config {
     char *params;
     void *ip_config;
-    uint32_t ip_id;
+    uint32_t exporter_ip_addr_crc;
     struct ipfix_template_mgr *tm;
 
     /* Hashmap for storing callback processor references for every tuple of ODID and
@@ -135,7 +135,7 @@ struct httpfieldmerge_processor {
     int type;
     uint8_t *msg;
     uint16_t allocated_msg_len, offset;
-    uint32_t length, odid;
+    uint32_t length, exporter_ip_addr_crc, odid;
     
     struct httpfieldmerge_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
     struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */

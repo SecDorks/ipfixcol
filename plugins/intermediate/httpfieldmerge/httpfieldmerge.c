@@ -60,6 +60,8 @@
  *
  */
 
+#include <zlib.h>
+
 #include "httpfieldmerge.h"
 #include "fields.h"
 #include "vendor_proc/processors.h"
@@ -94,7 +96,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 
     /* Set key values */
     templ_stats_key->od_id = proc->odid;
-    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    templ_stats_key->exporter_ip_addr_crc = proc->exporter_ip_addr_crc;
     templ_stats_key->templ_id = templ_id;
 
     /* Retrieve or create new hashmap entry */
@@ -111,7 +113,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
         templ_stats->http_fields_pen = 0;
         templ_stats->http_fields_pen_determined = 0;
         templ_stats->od_id = proc->odid;
-        templ_stats->ip_id = proc->plugin_conf->ip_id;
+        templ_stats->exporter_ip_addr_crc = proc->exporter_ip_addr_crc;
         templ_stats->templ_id = templ_id;
 
         /* Store result in hashmap */
@@ -188,7 +190,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
 
         /* Set key values */
         od_stats_key->od_id = proc->odid;
-        od_stats_key->ip_id = proc->plugin_conf->ip_id;
+        od_stats_key->exporter_ip_addr_crc = proc->exporter_ip_addr_crc;
 
         /* Store item in hashmap, in case it does not exist yet */
         struct od_stats_elem_t *od_stat;
@@ -205,7 +207,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
             }
 
             od_stat->od_id = proc->odid;
-            od_stat->ip_id = proc->plugin_conf->ip_id;
+            od_stat->exporter_ip_addr_crc = proc->exporter_ip_addr_crc;
             HASH_ADD(hh, proc->plugin_conf->od_stats, od_id, proc->plugin_conf->od_stats_key_len, od_stat);
         }
 
@@ -225,6 +227,7 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
  */
 int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfix_template_mgr *template_mgr, void **config)
 {
+    (void) ip_id;
     struct httpfieldmerge_config *conf;
 
     conf = (struct httpfieldmerge_config *) calloc(1, sizeof(*conf));
@@ -235,17 +238,16 @@ int intermediate_init(char *params, void *ip_config, uint32_t ip_id, struct ipfi
 
     conf->params = params;
     conf->ip_config = ip_config;
-    conf->ip_id = ip_id;
     conf->tm = template_mgr;
 
     /* Initialize (empty) hashmaps */
     conf->od_stats = NULL;
-    conf->od_stats_key_len = offsetof(struct od_stats_elem_t, ip_id)          /* Offset of last key component */
-            + sizeof(uint32_t)                                                /* Last key component, ip_id, is if type 'uint32_t' */
+    conf->od_stats_key_len = offsetof(struct od_stats_elem_t, exporter_ip_addr_crc) /* Offset of last key component */
+            + sizeof(uint32_t)                                                /* Last key component, `exporter_ip_addr_crc`, is if type 'uint32_t' */
             - offsetof(struct od_stats_elem_t, od_id);                        /* Offset of first key component */
     conf->templ_stats = NULL;
     conf->templ_stats_key_len = offsetof(struct templ_stats_elem_t, templ_id) /* Offset of last key component */
-            + sizeof(uint16_t)                                                /* Last key component, ip_id, is if type 'uint16_t' */
+            + sizeof(uint16_t)                                                /* Last key component, `templ_id`, is if type 'uint16_t' */
             - offsetof(struct templ_stats_elem_t, od_id);                     /* Offset of first key component */
 
     *config = conf;
@@ -273,14 +275,14 @@ int intermediate_process_message(void *config, void *message)
     struct httpfieldmerge_processor proc;
     struct ipfix_message *msg, *new_msg;
     struct ipfix_template *templ, *new_templ;
-    struct input_info_network *info;
+    struct input_info_network *input;
     uint16_t prev_offset;
     uint32_t tsets = 0, otsets = 0;
     uint16_t i, new_i;
 
     conf = (struct httpfieldmerge_config *) config;
     msg = (struct ipfix_message *) message;
-    info = (struct input_info_network *) msg->input_info;
+    input = (struct input_info_network *) msg->input_info;
 
     /* Check whether source was closed */
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
@@ -336,9 +338,19 @@ int intermediate_process_message(void *config, void *message)
     new_msg->pkt_header = (struct ipfix_header *) proc.msg;
     proc.offset = IPFIX_HEADER_LENGTH;
 
+    /* Calculate CRC32 of exporter IP address */
+    char exporter_ip_addr[INET6_ADDRSTRLEN];
+    uint32_t exporter_ip_addr_crc;
+    if (input->l3_proto == 6) { /* IPv6 */
+        exporter_ip_addr_crc = crc32(0, (const void *) &(input->src_addr.ipv6), INET6_ADDRSTRLEN);
+    } else { /* IPv4 */
+        exporter_ip_addr_crc = crc32(0, (const void *) &(input->src_addr.ipv4.s_addr), INET_ADDRSTRLEN);
+    }
+
     /* Initialize processing structure */
+    proc.exporter_ip_addr_crc = exporter_ip_addr_crc;
     proc.odid = msg->input_info->odid;
-    proc.key = tm_key_create(info->odid, conf->ip_id, 0); /* Template ID (0) will be overwritten in a later stage */
+    proc.key = tm_key_create(input->odid, exporter_ip_addr_crc, 0); /* Template ID (0) will be overwritten in a later stage */
     proc.plugin_conf = config;
 
     /* Process template sets */
@@ -367,7 +379,7 @@ int intermediate_process_message(void *config, void *message)
 
         /* Set key values */
         od_stats_key->od_id = proc.odid;
-        od_stats_key->ip_id = proc.plugin_conf->ip_id;
+        od_stats_key->exporter_ip_addr_crc = exporter_ip_addr_crc;
 
         /* Retrieve OD statistics from hashmap */
         struct od_stats_elem_t *od_stat;
@@ -477,7 +489,7 @@ int intermediate_process_message(void *config, void *message)
 
         /* Set key values */
         od_stats_key->od_id = proc.odid;
-        od_stats_key->ip_id = proc.plugin_conf->ip_id;
+        od_stats_key->exporter_ip_addr_crc = exporter_ip_addr_crc;
 
         /* Retrieve OD statistics from hashmap */
         struct od_stats_elem_t *od_stat;

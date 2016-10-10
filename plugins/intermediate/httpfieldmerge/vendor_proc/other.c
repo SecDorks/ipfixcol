@@ -207,7 +207,7 @@ void other_template_rec_processor(uint8_t *rec, int rec_len, void *data)
 
     /* Set key values */
     templ_stats_key->od_id = proc->odid;
-    templ_stats_key->ip_id = proc->plugin_conf->ip_id;
+    templ_stats_key->exporter_ip_addr_crc = proc->exporter_ip_addr_crc;
     templ_stats_key->templ_id = templ_id;
 
     /* Get structure from hashmap that provides information about current template */
@@ -216,7 +216,7 @@ void other_template_rec_processor(uint8_t *rec, int rec_len, void *data)
     if (templ_stats == NULL) {
         MSG_ERROR(msg_module, "Could not find key <%u, %u, %u> in hashmap; using original template",
                 templ_stats_key->od_id,
-                templ_stats_key->ip_id,
+                templ_stats_key->exporter_ip_addr_crc,
                 templ_stats_key->templ_id);
 
         /* Copy existing record to new message */
