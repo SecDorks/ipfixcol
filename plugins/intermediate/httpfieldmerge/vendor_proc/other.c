@@ -90,6 +90,9 @@ static struct ipfix_entity* pen_to_enterprise_fields(uint32_t pen)
         case RS_PEN:        fields = (struct ipfix_entity *) rs_fields;
                             break;
 
+        case SECUREME2_PEN: fields = (struct ipfix_entity *) secureme2_fields;
+                            break;
+
         default:            MSG_WARNING(msg_module, "Could not retrieve enterprise-specific IEs; unknown PEN (%u)", pen);
                             break;
     }
@@ -117,6 +120,9 @@ static struct field_mapping* pen_to_field_mappings(uint32_t pen)
                             break;
 
         case RS_PEN:        mapping = (struct field_mapping *) rs_field_mappings;
+                            break;
+
+        case SECUREME2_PEN: mapping = (struct field_mapping *) secureme2_field_mappings;
                             break;
 
         default:            MSG_WARNING(msg_module, "Could not retrieve field mappings for enterprise-specific IEs; unknown PEN (%u)", pen);

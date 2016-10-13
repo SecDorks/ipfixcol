@@ -173,6 +173,14 @@ void templates_stat_processor(uint8_t *rec, int rec_len, void *data)
             }
         }
 
+        /* Check enterprise-specific IEs from SecureMe2 */
+        for (i = 0; i < secureme2_field_count && templ_stats->http_fields_pen == 0; ++i) {
+            if (template_record_get_field(record, secureme2_fields[i].pen, secureme2_fields[i].element_id, NULL) != NULL) {
+                MSG_INFO(msg_module, "[%u] Detected enterprise-specific IEs (HTTP) from SecureMe2 in template (template ID: %u)", proc->odid, templ_id);
+                templ_stats->http_fields_pen = secureme2_fields[i].pen;
+            }
+        }
+
         templ_stats->http_fields_pen_determined = 1;
     }
 
