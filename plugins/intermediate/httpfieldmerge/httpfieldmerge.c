@@ -23,6 +23,7 @@
  *     - Masaryk University,    PEN: 16982
  *     - INVEA-TECH,            PEN: 39499
  *     - ntop,                  PEN: 35632
+ *     - SecureMe2,             PEN: 48060
  *
  * The unified set of fields uses PEN '44913'.
  *
