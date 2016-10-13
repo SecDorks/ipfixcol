@@ -346,7 +346,6 @@ int intermediate_process_message(void *config, void *message)
     proc.offset = IPFIX_HEADER_LENGTH;
 
     /* Calculate CRC32 of exporter IP address */
-    char exporter_ip_addr[INET6_ADDRSTRLEN];
     uint32_t exporter_ip_addr_crc;
     if (input->l3_proto == 6) { /* IPv6 */
         exporter_ip_addr_crc = crc32(0, (const void *) &(input->src_addr.ipv6), INET6_ADDRSTRLEN);
