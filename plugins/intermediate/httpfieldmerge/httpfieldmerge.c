@@ -73,6 +73,22 @@
 /* API version constant */
 IPFIXCOL_API_VERSION;
 
+uint32_t input_calculate_crc32(struct input_info *input)
+{
+    if (input->type == SOURCE_TYPE_IPFIX_FILE) {
+        struct input_info_file *input_file = (struct input_info_file *) input;
+        return crc32(0, (const void *) &(input_file->name), strlen(input_file->name));
+    }
+
+    struct input_info_network *input_network = (struct input_info_network *) input;
+
+    if (input_network->l3_proto == 6) { /* IPv6 */
+        return crc32(0, (const void *) &(input_network->src_addr.ipv6), INET6_ADDRSTRLEN);
+    } else { /* IPv4 */
+        return crc32(0, (const void *) &(input_network->src_addr.ipv4.s_addr), INET_ADDRSTRLEN);
+    }
+}
+
 /**
  * \brief Determines whether template contains HTTP-related fields.
  *
@@ -283,14 +299,12 @@ int intermediate_process_message(void *config, void *message)
     struct httpfieldmerge_processor proc;
     struct ipfix_message *msg, *new_msg;
     struct ipfix_template *templ, *new_templ;
-    struct input_info_network *input;
     uint16_t prev_offset;
     uint32_t tsets = 0, otsets = 0;
     uint16_t i, new_i;
 
     conf = (struct httpfieldmerge_config *) config;
     msg = (struct ipfix_message *) message;
-    input = (struct input_info_network *) msg->input_info;
 
     /* Check whether source was closed */
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
@@ -347,17 +361,12 @@ int intermediate_process_message(void *config, void *message)
     proc.offset = IPFIX_HEADER_LENGTH;
 
     /* Calculate CRC32 of exporter IP address */
-    uint32_t exporter_ip_addr_crc;
-    if (input->l3_proto == 6) { /* IPv6 */
-        exporter_ip_addr_crc = crc32(0, (const void *) &(input->src_addr.ipv6), INET6_ADDRSTRLEN);
-    } else { /* IPv4 */
-        exporter_ip_addr_crc = crc32(0, (const void *) &(input->src_addr.ipv4.s_addr), INET_ADDRSTRLEN);
-    }
+    uint32_t exporter_ip_addr_crc = input_calculate_crc32(msg->input_info);
 
     /* Initialize processing structure */
     proc.exporter_ip_addr_crc = exporter_ip_addr_crc;
     proc.odid = msg->input_info->odid;
-    proc.key = tm_key_create(input->odid, exporter_ip_addr_crc, 0); /* Template ID (0) will be overwritten in a later stage */
+    proc.key = tm_key_create(msg->input_info->odid, exporter_ip_addr_crc, 0); /* Template ID (0) will be overwritten in a later stage */
     proc.plugin_conf = config;
 
     /* Process template sets */
