@@ -119,29 +119,13 @@ struct ipfix_entity {
 #define target_unknown          { TARGET_PEN, 12345 }
 #define target_field_count      4
 
-static struct ipfix_entity cisco_fields[] = {
-    cisco_http_hostname, cisco_http_url, cisco_http_user_agent, cisco_http_unknown
-};
-static struct ipfix_entity invea_fields[] = {
-    invea_http_hostname, invea_http_url, invea_http_user_agent
-};
-static struct ipfix_entity masaryk_fields[] = {
-    masaryk_http_hostname, masaryk_http_url, masaryk_http_user_agent
-};
-static struct ipfix_entity ntop_fields[] = {
-    ntop_http_hostname, ntop_http_url, ntop_http_user_agent
-};
-static struct ipfix_entity ntopv9_fields[] = {
-    ntop_http_hostname_v9, ntop_http_url_v9, ntop_http_user_agent_v9
-};
-static struct ipfix_entity rs_fields[] = {
-    rs_http_hostname, rs_http_url, rs_http_user_agent
-};
-static struct ipfix_entity secureme2_fields[] = {
-    secureme2_http_hostname, secureme2_http_url, secureme2_http_user_agent
-};
-static struct ipfix_entity target_fields[] = {
-    target_http_hostname, target_http_url, target_http_user_agent, target_unknown
-};
+extern struct ipfix_entity cisco_fields[];
+extern struct ipfix_entity invea_fields[];
+extern struct ipfix_entity masaryk_fields[];
+extern struct ipfix_entity ntop_fields[];
+extern struct ipfix_entity ntopv9_fields[];
+extern struct ipfix_entity rs_fields[];
+extern struct ipfix_entity secureme2_fields[];
+extern struct ipfix_entity target_fields[];
 
 #endif /* HTTPFIELDMERGE_FIELDS_H_ */
