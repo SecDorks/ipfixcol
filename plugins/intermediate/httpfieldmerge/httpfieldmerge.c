@@ -23,6 +23,7 @@
  *     - Masaryk University,    PEN: 16982
  *     - INVEA-TECH,            PEN: 39499
  *     - ntop,                  PEN: 35632
+ *     - SecureMe2,             PEN: 48060
  *
  * The unified set of fields uses PEN '44913'.
  *
@@ -71,6 +72,44 @@
 
 /* API version constant */
 IPFIXCOL_API_VERSION;
+
+uint32_t input_calculate_crc32(struct input_info *input)
+{
+    if (input->type == SOURCE_TYPE_IPFIX_FILE) {
+        struct input_info_file *input_file = (struct input_info_file *) input;
+        return crc32(0, (const void *) &(input_file->name), strlen(input_file->name));
+    }
+
+    struct input_info_network *input_network = (struct input_info_network *) input;
+
+    if (input_network->l3_proto == 6) { /* IPv6 */
+        return crc32(0, (const void *) &(input_network->src_addr.ipv6), INET6_ADDRSTRLEN);
+    } else { /* IPv4 */
+        return crc32(0, (const void *) &(input_network->src_addr.ipv4.s_addr), INET_ADDRSTRLEN);
+    }
+}
+
+struct ipfix_entity cisco_fields[] = {
+    cisco_http_hostname, cisco_http_url, cisco_http_user_agent, cisco_http_unknown
+};
+struct ipfix_entity invea_fields[] = {
+    invea_http_hostname, invea_http_url, invea_http_user_agent
+};
+struct ipfix_entity masaryk_fields[] = {
+    masaryk_http_hostname, masaryk_http_url, masaryk_http_user_agent
+};
+struct ipfix_entity ntop_fields[] = {
+    ntop_http_hostname, ntop_http_url, ntop_http_user_agent
+};
+struct ipfix_entity ntopv9_fields[] = {
+    ntop_http_hostname_v9, ntop_http_url_v9, ntop_http_user_agent_v9
+};
+struct ipfix_entity rs_fields[] = {
+    rs_http_hostname, rs_http_url, rs_http_user_agent
+};
+struct ipfix_entity secureme2_fields[] = {
+    secureme2_http_hostname, secureme2_http_url, secureme2_http_user_agent
+};
 
 /**
  * \brief Determines whether template contains HTTP-related fields.
@@ -282,14 +321,12 @@ int intermediate_process_message(void *config, void *message)
     struct httpfieldmerge_processor proc;
     struct ipfix_message *msg, *new_msg;
     struct ipfix_template *templ, *new_templ;
-    struct input_info_network *input;
     uint16_t prev_offset;
     uint32_t tsets = 0, otsets = 0;
     uint16_t i, new_i;
 
     conf = (struct httpfieldmerge_config *) config;
     msg = (struct ipfix_message *) message;
-    input = (struct input_info_network *) msg->input_info;
 
     /* Check whether source was closed */
     if (msg->source_status == SOURCE_STATUS_CLOSED) {
@@ -346,18 +383,12 @@ int intermediate_process_message(void *config, void *message)
     proc.offset = IPFIX_HEADER_LENGTH;
 
     /* Calculate CRC32 of exporter IP address */
-    char exporter_ip_addr[INET6_ADDRSTRLEN];
-    uint32_t exporter_ip_addr_crc;
-    if (input->l3_proto == 6) { /* IPv6 */
-        exporter_ip_addr_crc = crc32(0, (const void *) &(input->src_addr.ipv6), INET6_ADDRSTRLEN);
-    } else { /* IPv4 */
-        exporter_ip_addr_crc = crc32(0, (const void *) &(input->src_addr.ipv4.s_addr), INET_ADDRSTRLEN);
-    }
+    uint32_t exporter_ip_addr_crc = input_calculate_crc32(msg->input_info);
 
     /* Initialize processing structure */
     proc.exporter_ip_addr_crc = exporter_ip_addr_crc;
     proc.odid = msg->input_info->odid;
-    proc.key = tm_key_create(input->odid, exporter_ip_addr_crc, 0); /* Template ID (0) will be overwritten in a later stage */
+    proc.key = tm_key_create(msg->input_info->odid, exporter_ip_addr_crc, 0); /* Template ID (0) will be overwritten in a later stage */
     proc.plugin_conf = config;
 
     /* Process template sets */

@@ -23,6 +23,7 @@
  *     - Masaryk University,    PEN: 16982
  *     - INVEA-TECH,            PEN: 39499
  *     - ntop,                  PEN: 35632
+ *     - SecureMe2,             PEN: 48060
  *
  * The unified set of fields uses PEN '44913'.
  *
@@ -96,7 +97,7 @@ struct od_stats_key_t {
 struct templ_stats_elem_t {
     UT_hash_handle hh;              /* Hash handle for internal hash functioning */
     uint32_t http_fields_pen;       /* Exporter PEN in case template contains HTTP-related fields */
-    int http_fields_pen_determined; /* Indicates whether the PEN belonging HTTP-related has been determined before */
+    int http_fields_pen_determined; /* Indicates whether the PEN belonging to HTTP-related has been determined before */
     uint32_t od_id;                 /* Hash key - component 1 */
     uint32_t exporter_ip_addr_crc;  /* Hash key - component 2 */
     uint16_t templ_id;              /* Hash key - component 3 */
@@ -137,7 +138,7 @@ struct httpfieldmerge_processor {
     uint16_t allocated_msg_len, offset;
     uint32_t length, exporter_ip_addr_crc, odid;
     
-    struct httpfieldmerge_config *plugin_conf; /* Pointer to proxy_config, such that we don't have to store some pointers twice */
+    struct httpfieldmerge_config *plugin_conf; /* Pointer to httpfieldmerge_config, such that we don't have to store some pointers twice */
     struct ipfix_template_key *key; /* Stores the key of a newly added template within the template manager */
 };
 

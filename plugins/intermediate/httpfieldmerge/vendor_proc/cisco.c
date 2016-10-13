@@ -66,6 +66,10 @@
 
 #define CISCO_ENCODING_LEN 6
 
+struct ipfix_entity target_fields[] = {
+    target_http_hostname, target_http_url, target_http_user_agent, target_unknown
+};
+
 // void print_mem_addr(uint8_t *p, uint16_t len)
 // {
 //     char *addr;
