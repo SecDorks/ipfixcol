@@ -38,19 +38,20 @@
 
 AC_PREREQ([2.60])
 # Process this file with autoconf to produce a configure script.
-AC_INIT([ipfixcol-lnfstore-output], [0.2.7])
+AC_INIT([ipfixcol-dhcp-inter], [0.0.1])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign -Wno-portability])
+AC_GNU_SOURCE
+
 LT_PREREQ([2.2])
 LT_INIT([dlopen disable-static])
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SRCDIR([lnfstore.c])
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_SRCDIR([dhcp.c])
+dnl AM_CONFIG_HEADER(config.h)
 
 # Initialization
-CFLAGS="-Wall -std=gnu99"
-# We need -fPIC to link to some of the libraries
-LDFLAGS="$LDFLAGS -fPIC"
+AM_CFLAGS="-Wall -O2 -std=gnu99"
+AC_LANG(C)
 
 RELEASE=1
 AC_SUBST(RELEASE)
@@ -61,9 +62,8 @@ LBR_SET_DISTRO([redhat])
 
 ############################ Check for programs ################################
 
-# Check for rpmbuil
+# Check for rpmbuild
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild)
-
 AC_SUBST([BUILDREQS])
 
 # Check for xsltproc
@@ -74,6 +74,15 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
+###################### Check for configure parameters ##########################
+AC_ARG_ENABLE([debug], 
+        AC_HELP_STRING([--enable-debug],[turn on more debugging options]),
+        [AM_CFLAGS="$AM_CFLAGS -Wextra -g"])
+
+AC_ARG_ENABLE([doc],
+        AC_HELP_STRING([--disable-doc],[disable documentation building]))
+AM_CONDITIONAL([HAVE_DOC], [test "$enable_doc" != "no"])
+
 ############################ Check for libraries ###############################
 
 ### LibXML2 ###
@@ -82,49 +91,50 @@ AC_CHECK_LIB([xml2], [main],
     CPPFLAGS="`xml2-config --cflags` $CPPFLAGS"],
     AC_MSG_ERROR([Libxml2 not found ]))
 
-AC_SEARCH_LIBS([lnf_open], [nf], [], [AC_MSG_ERROR([unable to find the libnf library])])
 
-###################### Check for configure parameters ##########################
-AC_ARG_ENABLE([debug], 
-        AC_HELP_STRING([--enable-debug],[turn on more debugging options]),
-        [CFLAGS="$CFLAGS -Wextra -g"])
-
-AC_ARG_ENABLE([doc],
-        AC_HELP_STRING([--disable-doc],[disable documentation building]))
-AM_CONDITIONAL([HAVE_DOC], [test "$enable_doc" != "no"])
+AC_SEARCH_LIBS([sqlite3_open], [sqlite3],,
+		AC_MSG_ERROR([Required library sqlite3 missing]))
 
 ######################### Checks for header files ##############################
-AC_CHECK_HEADERS([arpa/inet.h inttypes.h string.h unistd.h])
+AC_CHECK_HEADERS([float.h netinet/in.h stddef.h stdint.h stdlib.h string.h wchar.h])
 
 # Check whether we can find headers dir in relative path (git repository)
 AS_IF([test -d $srcdir/../../../base/headers], 
-	[CPPFLAGS="$CPPFLAGS -I$srcdir/../../../base/headers"
+	[AM_CPPFLAGS+=" -I$srcdir/../../../base/headers"
 	BUILD_AGAINST="git"]
 )
 
+cppflags_save="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $AM_CPPFLAGS"
 AC_CHECK_HEADERS([ipfixcol.h], , AC_MSG_ERROR([ipfixcol.h header missing. Please install ipfixcol-devel package]), [AC_INCLUDES_DEFAULT])
-
-# Check libtrap headers
-AC_CHECK_HEADERS([libnf.h], , AC_MSG_ERROR([libnf.h header missing. Please install libnf package]), [AC_INCLUDES_DEFAULT])
-
+CPPFLAGS="$cppflags_save"
+ 
 ######## Checks for typedefs, structures, and compiler characteristics #########
+AC_HEADER_STDBOOL
 AC_C_INLINE
-AC_TYPE_INT16_T
 AC_TYPE_INT32_T
-AC_TYPE_INT64_T
-AC_TYPE_INT8_T
 AC_TYPE_SIZE_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
+AC_CHECK_TYPES([ptrdiff_t])
 
 ######################## Checks for library functions ##########################
+AC_FUNC_ERROR_AT_LINE
 AC_CHECK_FUNCS([malloc])
 AC_CHECK_FUNCS([realloc])
-AC_CHECK_FUNCS([memset])
+AC_FUNC_STRTOD
+AC_CHECK_FUNCS([floor memmove mkdir strchr strstr strtol strtoul])
+AC_CHECK_DECL([be64toh], [AC_DEFINE([HAVE_BE64TOH], [1],
+                               [Define if macro be64toh exists.])],,
+							   [[#include <endian.h>]])
 
 ############################### Set output #####################################
+# Substitute compiler flags
+AC_SUBST([AM_CFLAGS])
+AC_SUBST([AM_CPPFLAGS])
+AC_SUBST([AM_LDFLAGS])
 
 AC_SUBST(RPMBUILD)
 if test -z "$RPMBUILD"; then
@@ -132,10 +142,13 @@ if test -z "$RPMBUILD"; then
 fi
 
 AC_SUBST(XSLTPROC)
+if test -z "$XSLTPROC"; then
+	AC_MSG_WARN([Due to missing xsltproc you will not able to generate MAN pages.])
+fi
 
 # generate output
 AC_CONFIG_FILES([Makefile
-				ipfixcol-lnfstore-output.spec])
+		ipfixcol-dhcp-inter.spec])
 
 # tools makefiles
 
@@ -149,13 +162,14 @@ AM_COND_IF(HAVE_DOC,
     )]
 )
 
+
 # Print final summary
 echo "
   $PACKAGE_NAME version $PACKAGE_VERSION
   Prefix........: $prefix
   Distribution..: $DISTRO
-  C Compiler....: $CC $CFLAGS $CPPFLAGS
-  Linker........: $LDFLAGS $LIBS
+  C Compiler....: $CC $AM_CFLAGS $CFLAGS
+  Linker........: $AM_LDFLAGS $LDFLAGS $LIBS
   Build against.: ${BUILD_AGAINST:-system}
   rpmbuild......: ${RPMBUILD:-NONE}
   Build doc.....: ${enable_doc:-yes}
